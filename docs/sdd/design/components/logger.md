@@ -68,6 +68,23 @@ logger.Info("shutdown complete")
 | `LOG_LEVEL=warn` | - | `slog.LevelWarn` |
 | `LOG_LEVEL=error` | - | `slog.LevelError` |
 
+### フィールド名の整合
+
+`log/slog` の `JSONHandler` はデフォルトで `"time"` キーを出力しますが、US-006 の REQ-006-001 では `"timestamp"` フィールド（RFC3339）が要求されています。
+`HandlerOptions.ReplaceAttr` を使って `"time"` を `"timestamp"` に変換します:
+
+```go
+opts := &slog.HandlerOptions{
+    Level: level,
+    ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+        if len(groups) == 0 && a.Key == slog.TimeKey {
+            a.Key = "timestamp" // "time" → "timestamp" (US-006 要件)
+        }
+        return a
+    },
+}
+```
+
 ---
 
 ## 依存関係

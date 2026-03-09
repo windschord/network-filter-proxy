@@ -108,7 +108,9 @@ proxy.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(
     func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
         // フィルタリング判定
         // 許可: return goproxy.OkConnect, host
-        // 拒否: レスポンスを直接書いて return goproxy.RejectConnect, host
+        // 拒否: ctx.Resp に 403 レスポンスを設定して return goproxy.RejectConnect, host
+        //   例: ctx.Resp = &http.Response{StatusCode: 403, Header: http.Header{"X-Filter-Reason": []string{"denied"}}, ...}
+        //   ※ FuncHttpsHandler は http.ResponseWriter を受け取らないため直接書き込みは不可
     },
 ))
 
