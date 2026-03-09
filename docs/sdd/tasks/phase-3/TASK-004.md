@@ -105,10 +105,24 @@ import (
     "log/slog"
     "net"
     "net/http"
+    "sync"
+    "sync/atomic"
 
     "github.com/claudework/network-filter-proxy/internal/rule"
     "github.com/elazarl/goproxy"
 )
+
+// trackingConn は net.Conn をラップし、Close 時に activeConn をデクリメントする
+type trackingConn struct {
+    net.Conn
+    done      func()
+    closeOnce sync.Once
+}
+
+func (c *trackingConn) Close() error {
+    c.closeOnce.Do(c.done)
+    return c.Conn.Close()
+}
 
 type Handler struct {
     store      *rule.Store
@@ -145,13 +159,23 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
                     logger.Info("proxy request",
                         "action", "allow", "src_ip", srcIP,
                         "dst_host", dstHost, "dst_port", dstPort)
-                    // CONNECT 成功時: アクティブ接続数をインクリメント
+                    // アクティブ接続数をインクリメントし、トンネル終了時にデクリメントする
+                    // goproxy.ConnectAction.Dial で trackingConn を返すことで接続終了を検知する
                     h.activeConn.Add(1)
-                    // NOTE: goproxy の CONNECT トンネルが終了したタイミングで Add(-1) を呼ぶ
-                    // goproxy はトンネル終了フックを持たないため、
-                    // ctx.Req の Context Done チャネルや独自の RoundTripper ラッパーで
-                    // 接続終了を検知して h.activeConn.Add(-1) を実行すること
-                    return goproxy.OkConnect, host
+                    return &goproxy.ConnectAction{
+                        Action: goproxy.OkConnect,
+                        Dial: func(network, addr string) (net.Conn, error) {
+                            c, err := net.Dial(network, addr)
+                            if err != nil {
+                                h.activeConn.Add(-1)
+                                return nil, err
+                            }
+                            return &trackingConn{
+                                Conn: c,
+                                done: func() { h.activeConn.Add(-1) },
+                            }, nil
+                        },
+                    }, host
                 }
             }
 
@@ -167,6 +191,48 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
             return goproxy.RejectConnect, host
         },
     ))
+
+    // 通常 HTTP リクエスト（CONNECT 以外）のフィルタリング
+    p.OnRequest().DoFunc(
+        func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+            srcIP := extractIP(r.RemoteAddr)
+            dstHost, dstPort := splitHostPort(r.Host)
+
+            rs, ok := store.Get(srcIP)
+            if !ok {
+                logger.Info("proxy request",
+                    "action", "deny", "src_ip", srcIP,
+                    "dst_host", dstHost, "dst_port", dstPort,
+                    "reason", "no-rules")
+                return r, &http.Response{
+                    StatusCode: http.StatusForbidden,
+                    Header:     http.Header{"X-Filter-Reason": {"no-rules"}},
+                    Body:       http.NoBody,
+                    Request:    r,
+                }
+            }
+
+            for _, entry := range rs.Entries {
+                if rule.Matches(entry, dstHost, dstPort) {
+                    logger.Info("proxy request",
+                        "action", "allow", "src_ip", srcIP,
+                        "dst_host", dstHost, "dst_port", dstPort)
+                    return r, nil
+                }
+            }
+
+            logger.Info("proxy request",
+                "action", "deny", "src_ip", srcIP,
+                "dst_host", dstHost, "dst_port", dstPort,
+                "reason", "denied")
+            return r, &http.Response{
+                StatusCode: http.StatusForbidden,
+                Header:     http.Header{"X-Filter-Reason": {"denied"}},
+                Body:       http.NoBody,
+                Request:    r,
+            }
+        },
+    )
 
     h.proxy = p
     return h

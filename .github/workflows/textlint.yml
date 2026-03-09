@@ -5,6 +5,9 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - '**/*.md'
+      - '.textlintrc.json'
+      - 'package.json'
+      - '.github/workflows/textlint.yml'
   workflow_dispatch:
 
 permissions:

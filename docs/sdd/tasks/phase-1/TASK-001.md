@@ -169,7 +169,7 @@ go test -race ./internal/config/... ./internal/logger/...
 
 ### ステップ 6: コミットして完了
 
-```
+```text
 feat: Implement config and logger packages
 ```
 
