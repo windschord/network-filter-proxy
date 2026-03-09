@@ -104,6 +104,7 @@ linters:
     - unused
     - gosimple
     - ineffassign
+    - cyclop
 
 linters-settings:
   cyclop:
@@ -139,8 +140,8 @@ jobs:
         run: go test -race -coverprofile=coverage.out ./...
       - name: Check coverage
         run: |
-          go tool cover -func=coverage.out | tail -1
-          # カバレッジ 80% 以上を確認
+          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:

@@ -98,26 +98,38 @@ func main() {
         Handler: apiHandler.Routes(),
     }
 
-    // 両サーバーを goroutine で起動
+    // シグナル待機コンテキストを先に生成する
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+    defer stop()
+
+    // 両サーバーを goroutine で起動。起動失敗はエラーチャネルで main goroutine に伝搬し、
+    // os.Exit(1) を goroutine 内で呼ばずに graceful shutdown 経路を通る
+    errCh := make(chan error, 2)
     go func() {
         log.Info("proxy server starting", "port", cfg.ProxyPort)
         if err := proxySrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
             log.Error("proxy server error", "err", err)
-            os.Exit(1)
+            errCh <- err
         }
     }()
     go func() {
         log.Info("api server starting", "port", cfg.APIPort)
         if err := apiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
             log.Error("api server error", "err", err)
-            os.Exit(1)
+            errCh <- err
         }
     }()
 
-    // シグナル待機
-    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-    defer stop()
-    <-ctx.Done()
+    // シグナルまたはサーバーエラーのいずれかを待機
+    var exitCode int
+    select {
+    case <-ctx.Done():
+        // SIGTERM / SIGINT 受信
+    case err := <-errCh:
+        log.Error("server failed, initiating shutdown", "err", err)
+        stop() // コンテキストをキャンセルして graceful shutdown へ移行
+        exitCode = 1
+    }
 
     // Graceful Shutdown
     log.Info("shutdown initiated")
@@ -136,6 +148,7 @@ func main() {
     }
     wg.Wait()
     log.Info("shutdown complete")
+    os.Exit(exitCode)
 }
 ```
 

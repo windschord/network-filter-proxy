@@ -51,8 +51,8 @@ sequenceDiagram
     Main->>RuleStore: NewStore()
     Main->>ProxyHandler: NewHandler(store, logger)
     Main->>APIHandler: NewHandler(store, logger, proxyHandler)
-    Main->>ProxyServer: &http.Server{Addr: ":3128", Handler: proxyHandler}
-    Main->>APIServer: &http.Server{Addr: ":8080", Handler: apiHandler.Routes()}
+    Main->>ProxyServer: &http.Server{Addr: ":"+cfg.ProxyPort, Handler: proxyHandler}
+    Main->>APIServer: &http.Server{Addr: ":"+cfg.APIPort, Handler: apiHandler.Routes()}
     par
         Main->>ProxyServer: ListenAndServe() (goroutine)
     and
@@ -134,6 +134,10 @@ filter-proxy/
 - [ ] 正常系: SIGTERM 受信後に両サーバーが正常終了する
 - [ ] 正常系: SHUTDOWN_TIMEOUT 秒以内に強制終了する
 - [ ] 正常系: 環境変数未設定時にデフォルト値が使用される
+
+## 注意事項
+
+- `net/http` の `Server.Shutdown()` は hijacked connections（HTTP CONNECT で確立された TCP トンネル）を閉じない。CONNECT トンネルは `Shutdown()` 完了後もアクティブな接続が残る場合がある。長時間の SHUTDOWN_TIMEOUT を設定するか、アクティブ接続数をモニタリングして運用上対処すること
 
 ## 関連要件
 

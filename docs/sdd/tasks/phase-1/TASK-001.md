@@ -103,7 +103,10 @@ type Config struct {
 }
 
 func Load() Config {
-    timeout, _ := strconv.Atoi(getEnv("SHUTDOWN_TIMEOUT", "30"))
+    timeout := 30
+    if v, err := strconv.Atoi(getEnv("SHUTDOWN_TIMEOUT", "30")); err == nil {
+        timeout = v
+    }
     return Config{
         ProxyPort:       getEnv("PROXY_PORT", "3128"),
         APIPort:         getEnv("API_PORT", "8080"),

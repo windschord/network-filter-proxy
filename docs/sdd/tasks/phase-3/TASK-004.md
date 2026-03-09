@@ -101,10 +101,10 @@ go test ./internal/proxy/...
 package proxy
 
 import (
+    "fmt"
     "log/slog"
     "net"
     "net/http"
-    "sync/atomic"
 
     "github.com/claudework/network-filter-proxy/internal/rule"
     "github.com/elazarl/goproxy"
@@ -145,6 +145,12 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
                     logger.Info("proxy request",
                         "action", "allow", "src_ip", srcIP,
                         "dst_host", dstHost, "dst_port", dstPort)
+                    // CONNECT 成功時: アクティブ接続数をインクリメント
+                    h.activeConn.Add(1)
+                    // NOTE: goproxy の CONNECT トンネルが終了したタイミングで Add(-1) を呼ぶ
+                    // goproxy はトンネル終了フックを持たないため、
+                    // ctx.Req の Context Done チャネルや独自の RoundTripper ラッパーで
+                    // 接続終了を検知して h.activeConn.Add(-1) を実行すること
                     return goproxy.OkConnect, host
                 }
             }

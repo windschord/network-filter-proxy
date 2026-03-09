@@ -122,7 +122,13 @@ func (s *Store) Get(sourceIP string) (*RuleSet, bool) {
     s.mu.RLock()
     defer s.mu.RUnlock()
     rs, ok := s.rules[sourceIP]
-    return rs, ok
+    if !ok {
+        return nil, false
+    }
+    // 呼び出し元が Entries を変更しても内部状態に影響しないよう deep copy を返す
+    entries := make([]Entry, len(rs.Entries))
+    copy(entries, rs.Entries)
+    return &RuleSet{Entries: entries, UpdatedAt: rs.UpdatedAt}, true
 }
 
 func (s *Store) Set(sourceIP string, entries []Entry) {

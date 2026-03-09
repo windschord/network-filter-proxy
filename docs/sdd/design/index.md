@@ -162,15 +162,18 @@ filter-proxy/
 ```dockerfile
 FROM golang:1.24-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /filter-proxy ./cmd/filter-proxy
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /filter-proxy ./cmd/filter-proxy
 
-FROM gcr.io/distroless/static
+FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /filter-proxy /filter-proxy
 EXPOSE 3128 8080
-HEALTHCHECK CMD ["/filter-proxy", "healthcheck"]
 ENTRYPOINT ["/filter-proxy"]
 ```
+
+**注意**: `gcr.io/distroless/static:nonroot` を使用して非 root ユーザーで実行する。distroless イメージには `curl` が存在しないため `HEALTHCHECK` 命令は使用しない。ヘルスチェックは Docker Compose / Kubernetes の外部プローブに委ねる（US-005）。
 
 ---
 

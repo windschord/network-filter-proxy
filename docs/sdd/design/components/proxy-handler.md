@@ -112,7 +112,7 @@ proxy.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(
     },
 ))
 
-// 通常 HTTP ハンドラー登録（オプション）
+// 通常 HTTP ハンドラー登録（必須: US-001 の通常 HTTP フォワードプロキシ要件を満たすために必要）
 proxy.OnRequest().DoFunc(
     func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
         // フィルタリング判定

@@ -14,7 +14,7 @@
 
 ## 明示された情報
 
-- `*.github.com` は `github.com` 自体と全サブドメインにマッチ
+- `*.github.com` は `github.com` 自体と直下1階層のサブドメイン（`api.github.com` 等）にマッチ。`evil.api.github.com` のような多段サブドメインはマッチしない
 - `*.*.example.com` は無効パターン
 - CIDR: `140.82.112.0/20` など
 - ポート 0 の場合は全ポート許可
@@ -55,9 +55,12 @@ Matches(entry, host, port):
      b. IP 判定 (net.ParseIP(entryHost) != nil)
         → host == entryHost なら true
      c. ワイルドカード判定 (strings.HasPrefix(entryHost, "*."))
-        → suffix = entryHost[1:]  // ".example.com"
-        → host == suffix[1:] (= "example.com") なら true
-        → strings.HasSuffix(host, suffix) なら true
+        → apex = entryHost[2:]  // "example.com"
+        → host == apex なら true（apex 完全一致）
+        → host == "サブドメイン." + apex（直下1階層のみ）なら true
+          具体的には: strings.HasSuffix(host, "."+apex) かつ
+                     strings.Count(host, ".") == strings.Count(apex, ".")+1 なら true
+        （`evil.api.example.com` のような多段サブドメインは不一致）
      d. 完全一致
         → host == entryHost なら true
   4. 上記に該当しない → false

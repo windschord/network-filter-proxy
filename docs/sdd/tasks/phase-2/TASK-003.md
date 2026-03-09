@@ -136,10 +136,19 @@ func Matches(entry Entry, host string, port int) bool {
     if net.ParseIP(entryHost) != nil {
         return host == entryHost
     }
-    // 3c. ワイルドカード
+    // 3c. ワイルドカード（1階層サブドメインのみ許可）
     if strings.HasPrefix(entryHost, "*.") {
-        suffix := entryHost[1:] // ".example.com"
-        return host == suffix[1:] || strings.HasSuffix(host, suffix)
+        apex := entryHost[2:] // "example.com"
+        // apex 完全一致（例: "github.com" が "*.github.com" にマッチ）
+        if host == apex {
+            return true
+        }
+        // 直下1階層のサブドメインのみ許可
+        // strings.HasSuffix だけでは "evil.api.github.com" が "*.github.com" にマッチしてしまうため、
+        // ドット数で多段サブドメインを排除する
+        suffix := "." + apex // ".example.com"
+        return strings.HasSuffix(host, suffix) &&
+            strings.Count(host, ".") == strings.Count(apex, ".")+1
     }
     // 3d. 完全一致
     return host == entryHost
@@ -186,8 +195,9 @@ feat: Implement Matcher with wildcard/CIDR support
 
 ## 注意事項
 
-- `*.github.com` は `github.com`（apex）と `api.github.com`（サブドメイン）の**両方**にマッチする
+- `*.github.com` は `github.com`（apex）と `api.github.com`（直下1階層のサブドメイン）の**両方**にマッチする
 - `evil.api.github.com` のような多段サブドメインは `*.github.com` に**マッチしない**
+- `strings.HasSuffix(host, suffix)` のみでの判定は `evil.api.github.com` が `*.github.com` にマッチしてしまうバグがあるため、ドット数による多段判定を必ず組み合わせること
 - ホスト名は `strings.ToLower` + 末尾ドット除去で正規化してからマッチングする
 
 ---
