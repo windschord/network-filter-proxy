@@ -8,5 +8,8 @@
   "devDependencies": {
     "textlint": "15.5.2",
     "textlint-rule-preset-ja-technical-writing": "^12.0.2"
+  },
+  "overrides": {
+    "glob": "^13.0.0"
   }
 }
