@@ -7,7 +7,7 @@
 
 ### ユーザーから明示された情報
 
-- [x] 言語: Go 1.24
+- [x] 言語: Go 1.26
 - [x] モジュール名: `github.com/claudework/network-filter-proxy`
 - [x] テスト: `go test -race ./...`（競合検出）
 - [x] Linter: `golangci-lint`
@@ -113,7 +113,7 @@ TASK-001 (基盤)
 | リスク | 影響度 | 発生確率 | 軽減策 |
 |--------|--------|----------|--------|
 | `elazarl/goproxy` の CONNECT 拒否レスポンス設定が複雑 | 中 | 中 | `ctx.Resp` に事前設定する方式を採用（設計に明記済み） |
-| Go 1.22 ServeMux のパスパラメータ構文の非互換 | 低 | 低 | Go 1.24 使用のため問題なし |
+| Go 1.22 ServeMux のパスパラメータ構文の非互換 | 低 | 低 | Go 1.26 使用のため問題なし |
 | distroless イメージで CGO 依存バイナリが起動しない | 高 | 低 | `CGO_ENABLED=0` で静的ビルドを徹底 |
 
 ## 備考

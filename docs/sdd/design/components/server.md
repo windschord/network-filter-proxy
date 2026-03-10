@@ -52,7 +52,7 @@ sequenceDiagram
     Main->>ProxyHandler: NewHandler(store, logger)
     Main->>APIHandler: NewHandler(store, logger, proxyHandler)
     Main->>ProxyServer: &http.Server{Addr: ":"+cfg.ProxyPort, Handler: proxyHandler}
-    Main->>APIServer: &http.Server{Addr: ":"+cfg.APIPort, Handler: apiHandler.Routes()}
+    Main->>APIServer: &http.Server{Addr: "127.0.0.1:"+cfg.APIPort, Handler: apiHandler.Routes()}
     par
         Main->>ProxyServer: ListenAndServe() (goroutine)
     and

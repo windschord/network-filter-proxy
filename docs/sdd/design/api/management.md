@@ -7,7 +7,7 @@
 
 ## 明示された情報
 
-- ポート: `:8080`
+- デフォルト bind アドレス: `127.0.0.1:8080`
 - 認証なし（internal network 内利用を前提）
 - レート制限なし
 - Content-Type: `application/json`

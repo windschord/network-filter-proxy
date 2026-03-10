@@ -26,7 +26,7 @@
 
 ### 使用技術
 
-- 言語: Go 1.24
+- 言語: Go 1.26
 - 標準ライブラリ: `os/signal`、`context`、`net/http`、`sync`
 
 ### 参照すべきファイル
@@ -51,8 +51,8 @@
 
 - [ ] `cmd/filter-proxy/main.go` が作成されている
 - [ ] `go build ./cmd/filter-proxy` が成功する
-- [ ] プロキシサーバー（:3128）と API サーバー（:8080）が並行起動する
-- [ ] `GET http://localhost:8080/api/v1/health` が 200 を返す
+- [ ] プロキシサーバー（:3128）と API サーバー（127.0.0.1:8080）が並行起動する
+- [ ] `GET http://127.0.0.1:8080/api/v1/health` が 200 を返す
 - [ ] SIGTERM 受信後、両サーバーが `SHUTDOWN_TIMEOUT` 秒以内に停止する
 - [ ] `go build -o /dev/null ./...` がエラーなし
 
@@ -81,7 +81,9 @@ import (
     "github.com/claudework/network-filter-proxy/internal/rule"
 )
 
-func main() {
+// run はアプリケーション本体。終了コードを返す。
+// os.Exit は defer を実行しないため、defer を使うロジックはすべて run() に収める。
+func run() int {
     cfg := config.Load()
     log := logger.New(cfg.LogFormat, cfg.LogLevel)
 
@@ -102,7 +104,7 @@ func main() {
     ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
     defer stop()
 
-    // 両サーバーを goroutine で起動。起動失敗はエラーチャネルで main goroutine に伝搬し、
+    // 両サーバーを goroutine で起動。起動失敗はエラーチャネルで run goroutine に伝搬し、
     // os.Exit(1) を goroutine 内で呼ばずに graceful shutdown 経路を通る
     errCh := make(chan error, 2)
     go func() {
@@ -121,7 +123,7 @@ func main() {
     }()
 
     // シグナルまたはサーバーエラーのいずれかを待機
-    var exitCode int
+    exitCode := 0
     select {
     case <-ctx.Done():
         // SIGTERM / SIGINT 受信
@@ -148,7 +150,11 @@ func main() {
     }
     wg.Wait()
     log.Info("shutdown complete")
-    os.Exit(exitCode)
+    return exitCode
+}
+
+func main() {
+    os.Exit(run())
 }
 ```
 
@@ -172,7 +178,7 @@ kill -TERM $(pgrep filter-proxy)
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Implement main entry point with graceful shutdown
 ```
 

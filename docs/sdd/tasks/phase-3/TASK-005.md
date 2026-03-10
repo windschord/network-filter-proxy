@@ -27,7 +27,7 @@ Go 1.22 以降の標準 `net/http` ServeMux を使ってルーティングを実
 
 ### 使用技術
 
-- 言語: Go 1.24
+- 言語: Go 1.26
 - ルーティング: 標準 `net/http` ServeMux（Go 1.22 拡張）
 - JSON: `encoding/json`
 - テスト: `net/http/httptest`

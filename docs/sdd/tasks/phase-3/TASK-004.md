@@ -27,7 +27,7 @@
 
 ### 使用技術
 
-- 言語: Go 1.24
+- 言語: Go 1.26
 - ライブラリ: `github.com/elazarl/goproxy`
 - テスト: `go test ./internal/proxy/...`
 

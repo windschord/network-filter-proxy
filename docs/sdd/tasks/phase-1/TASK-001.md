@@ -18,7 +18,7 @@ Go モジュールを初期化し、環境変数から設定を読み込む `con
 
 | 操作 | ファイルパス | 説明 |
 |------|-------------|------|
-| 作成 | `go.mod` | Go 1.24 モジュール定義・依存ライブラリ宣言 |
+| 作成 | `go.mod` | Go 1.26 モジュール定義・依存ライブラリ宣言 |
 | 作成 | `go.sum` | 依存ライブラリのチェックサム（`go mod tidy` で生成） |
 | 作成 | `internal/config/config.go` | 環境変数読み込み・Config 構造体 |
 | 作成 | `internal/config/config_test.go` | config のユニットテスト |
@@ -31,7 +31,7 @@ Go モジュールを初期化し、環境変数から設定を読み込む `con
 
 ### 使用技術
 
-- 言語: Go 1.24
+- 言語: Go 1.26
 - テスト: `go test ./...`
 - 外部ライブラリ: `github.com/elazarl/goproxy`（go.mod に宣言するのみ。本タスクでは使用しない）
 
@@ -48,7 +48,7 @@ Go モジュールを初期化し、環境変数から設定を読み込む `con
 
 ## 受入基準
 
-- [ ] `go.mod` が存在し、モジュール名 `github.com/claudework/network-filter-proxy`、Go 1.24 が宣言されている
+- [ ] `go.mod` が存在し、モジュール名 `github.com/claudework/network-filter-proxy`、Go 1.26 が宣言されている
 - [ ] `go.mod` に `github.com/elazarl/goproxy` が依存ライブラリとして追加されている
 - [ ] `internal/config/config.go` に `Config` 構造体と `Load() Config` 関数が実装されている
 - [ ] 環境変数未設定時にデフォルト値（ProxyPort=3128, APIPort=8080, LogLevel=info, LogFormat=json, ShutdownTimeout=30s）が使用される
@@ -232,7 +232,7 @@ feat: Implement config and logger packages
 
 ### 明示された情報
 
-- [x] Go 1.24 を使用
+- [x] Go 1.26 を使用
 - [x] モジュール名: `github.com/claudework/network-filter-proxy`
 - [x] 環境変数名・デフォルト値が仕様に明記されている
 - [x] ログ形式: JSON（デフォルト）/ テキスト

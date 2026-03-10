@@ -27,7 +27,7 @@
 
 ### 使用技術
 
-- 言語: Go 1.24
+- 言語: Go 1.26
 - 標準ライブラリ: `sync`、`time`
 - テスト: `go test -race ./internal/rule/...`
 
