@@ -192,7 +192,7 @@ go test ./internal/api/...
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Implement APIHandler with full CRUD endpoints
 ```
 

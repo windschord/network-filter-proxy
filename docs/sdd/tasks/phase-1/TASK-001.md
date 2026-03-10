@@ -68,9 +68,11 @@ Go モジュールを初期化し、環境変数から設定を読み込む `con
    - `PROXY_PORT=9999` 設定時に `Config.ProxyPort == "9999"` になる
    - `SHUTDOWN_TIMEOUT=60` 設定時に `Config.ShutdownTimeout == 60*time.Second` になる
    - `SHUTDOWN_TIMEOUT=abc`（パース失敗）時に `Config.ShutdownTimeout == 30*time.Second` になる
+   - `SHUTDOWN_TIMEOUT=-1`（負の値）時に `Config.ShutdownTimeout == 30*time.Second` になる
 2. `internal/logger/logger_test.go` を作成し、以下のテストケースを実装する:
-   - `New("json", "info")` で非 nil の `*slog.Logger` が返る
-   - `New("text", "debug")` で非 nil の `*slog.Logger` が返る
+   - `New("json", "info")` で出力を bytes.Buffer に捕捉し、JSON 形式（`{`で始まる）かつ `"timestamp"` キーが含まれることを確認する
+   - `New("text", "debug")` で出力を bytes.Buffer に捕捉し、`key=value` 形式かつ `timestamp=` が含まれることを確認する
+   - `New("json", "warn")` で info レベルのログが出力されないことを確認する
 3. `go test ./...` を実行してコンパイルエラー（テスト失敗）を確認
 4. コミット: `test: Add tests for config and logger`
 
@@ -105,7 +107,7 @@ type Config struct {
 
 func Load() Config {
     timeout := 30
-    if v, err := strconv.Atoi(getEnv("SHUTDOWN_TIMEOUT", "30")); err == nil {
+    if v, err := strconv.Atoi(getEnv("SHUTDOWN_TIMEOUT", "30")); err == nil && v > 0 {
         timeout = v
     }
     return Config{
@@ -210,7 +212,7 @@ feat: Implement config and logger packages
 ## 注意事項
 
 - `go.mod` のモジュール名は `github.com/claudework/network-filter-proxy` を使用する
-- `SHUTDOWN_TIMEOUT` のパース失敗時は 30 秒をデフォルトとする
+- `SHUTDOWN_TIMEOUT` のパース失敗時または負の値の場合は 30 秒をデフォルトとする
 - ログ出力先は `os.Stdout` 固定
 
 ---

@@ -168,6 +168,10 @@ func ValidateEntry(entry Entry) error {
         if wildcardCount > 1 || !strings.HasPrefix(entry.Host, "*.") {
             return fmt.Errorf("invalid wildcard pattern: %s (only *.example.com form is allowed)", entry.Host)
         }
+        // apex が空（"*." のみ）の場合はエラー
+        if len(entry.Host) <= 2 {
+            return fmt.Errorf("invalid wildcard pattern: %s (apex domain is empty)", entry.Host)
+        }
     }
     // CIDR バリデーション
     if strings.Contains(entry.Host, "/") {
@@ -187,7 +191,7 @@ go test ./internal/rule/...
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Implement Matcher with wildcard/CIDR support
 ```
 
