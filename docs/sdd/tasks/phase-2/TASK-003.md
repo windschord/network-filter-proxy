@@ -61,6 +61,8 @@
 - [ ] バリデーション: `*.*.example.com` → エラー
 - [ ] バリデーション: `*.`（空 apex）→ エラー
 - [ ] バリデーション: 空ホスト → エラー
+- [ ] バリデーション: `https://github.com`（スキーム付き）→ エラー
+- [ ] バリデーション: `api..github.com`（連続ドット）→ エラー
 - [ ] バリデーション: port=99999 → エラー
 - [ ] `go test ./internal/rule/...` が全パスする
 
@@ -93,6 +95,8 @@ func TestMatches_NormalizeTrailingDot(t *testing.T) { ... }
 func TestValidateEntry_EmptyHost(t *testing.T) { ... }
 func TestValidateEntry_MultiLevelWildcard(t *testing.T) { ... }
 func TestValidateEntry_EmptyWildcardApex(t *testing.T) { ... }  // "*." → エラー
+func TestValidateEntry_SchemeInHost(t *testing.T) { ... }       // "https://github.com" → エラー
+func TestValidateEntry_ConsecutiveDots(t *testing.T) { ... }    // "api..github.com" → エラー
 func TestValidateEntry_InvalidPort(t *testing.T) { ... }
 func TestValidateEntry_ValidCIDR(t *testing.T) { ... }
 func TestValidateEntry_InvalidCIDR(t *testing.T) { ... }
@@ -124,7 +128,7 @@ func Matches(entry Entry, host string, port int) bool {
     }
     // 2. ホスト正規化
     host = strings.ToLower(strings.TrimSuffix(host, "."))
-    entryHost := strings.ToLower(entry.Host)
+    entryHost := strings.ToLower(strings.TrimSuffix(entry.Host, "."))
     // 3a. CIDR 判定
     if strings.Contains(entryHost, "/") {
         _, ipNet, err := net.ParseCIDR(entryHost)
@@ -158,28 +162,46 @@ func Matches(entry Entry, host string, port int) bool {
 
 // ValidateEntry はルールエントリのバリデーションを行う
 func ValidateEntry(entry Entry) error {
-    if entry.Host == "" {
+    host := strings.TrimSpace(entry.Host)
+    if host == "" {
         return fmt.Errorf("host is required")
     }
     if entry.Port < 0 || entry.Port > 65535 {
         return fmt.Errorf("port must be between 0 and 65535, got %d", entry.Port)
     }
+    // スキーム付き URL を拒否（"://" を含む）
+    if strings.Contains(host, "://") {
+        return fmt.Errorf("invalid host: scheme not allowed: %s", host)
+    }
     // ワイルドカードバリデーション
-    if strings.Contains(entry.Host, "*") {
-        wildcardCount := strings.Count(entry.Host, "*")
-        if wildcardCount > 1 || !strings.HasPrefix(entry.Host, "*.") {
-            return fmt.Errorf("invalid wildcard pattern: %s (only *.example.com form is allowed)", entry.Host)
+    if strings.Contains(host, "*") {
+        wildcardCount := strings.Count(host, "*")
+        if wildcardCount > 1 || !strings.HasPrefix(host, "*.") {
+            return fmt.Errorf("invalid wildcard pattern: %s (only *.example.com form is allowed)", host)
         }
         // apex が空（"*." のみ）の場合はエラー
-        if len(entry.Host) <= 2 {
-            return fmt.Errorf("invalid wildcard pattern: %s (apex domain is empty)", entry.Host)
+        if len(host) <= 2 {
+            return fmt.Errorf("invalid wildcard pattern: %s (apex domain is empty)", host)
         }
+        return nil
     }
     // CIDR バリデーション
-    if strings.Contains(entry.Host, "/") {
-        if _, _, err := net.ParseCIDR(entry.Host); err != nil {
-            return fmt.Errorf("invalid CIDR: %s", entry.Host)
+    if strings.Contains(host, "/") {
+        if _, _, err := net.ParseCIDR(host); err != nil {
+            return fmt.Errorf("invalid CIDR: %s", host)
         }
+        return nil
+    }
+    // IP アドレス（完全一致）
+    if net.ParseIP(host) != nil {
+        return nil
+    }
+    // 完全一致ホスト名バリデーション（連続ドット・先頭末尾ドット等を拒否）
+    if strings.Contains(host, "..") {
+        return fmt.Errorf("invalid host: consecutive dots: %s", host)
+    }
+    if strings.HasPrefix(host, ".") || strings.HasSuffix(host, ".") {
+        return fmt.Errorf("invalid host: leading or trailing dot: %s", host)
     }
     return nil
 }

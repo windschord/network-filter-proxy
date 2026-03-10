@@ -186,7 +186,7 @@ ENTRYPOINT ["/filter-proxy"]
 | REQ-003-001〜004 | RuleStore（Get/デフォルト拒否） | 対応済 |
 | REQ-004-001〜014 | APIHandler（CRUD・バリデーション・bind 制限） | 対応済 |
 | REQ-005-001〜003 | APIHandler（/health エンドポイント） | 対応済 |
-| REQ-006-001〜006 | Logger（slog・接続ログ・操作ログ） | 対応済 |
+| REQ-006-001〜009 | Logger（slog・接続ログ・操作ログ・フォールバック） | 対応済 |
 | REQ-007-001〜005 | Server（signal.NotifyContext + Shutdown） | 対応済 |
 | NFR-PERF-001〜003 | atomic.Int64 接続数・O(n) マッチング | 対応済 |
 | NFR-SEC-001〜005 | デフォルト拒否・TLS 非終端・正規化・RWMutex | 対応済 |
