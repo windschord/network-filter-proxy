@@ -147,9 +147,9 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
             // CONNECT リクエストの host は常に "hostname:port" 形式（HTTP 仕様上必須）
             dstHost, dstPort := splitHostPort(host, 443)
 
-            rs, ok := store.Get(srcIP)
+            rs, ok := h.store.Get(srcIP)
             if !ok {
-                logger.Info("proxy request",
+                h.logger.Info("proxy request",
                     "action", "deny", "src_ip", srcIP,
                     "dst_host", dstHost, "dst_port", dstPort,
                     "reason", "no-rules")
@@ -163,7 +163,7 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
 
             for _, entry := range rs.Entries {
                 if rule.Matches(entry, dstHost, dstPort) {
-                    logger.Info("proxy request",
+                    h.logger.Info("proxy request",
                         "action", "allow", "src_ip", srcIP,
                         "dst_host", dstHost, "dst_port", dstPort)
                     // アクティブ接続数をインクリメントし、トンネル終了時にデクリメントする
@@ -186,7 +186,7 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
                 }
             }
 
-            logger.Info("proxy request",
+            h.logger.Info("proxy request",
                 "action", "deny", "src_ip", srcIP,
                 "dst_host", dstHost, "dst_port", dstPort,
                 "reason", "denied")
@@ -210,9 +210,9 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
             }
             dstHost, dstPort := splitHostPort(r.Host, defaultPort)
 
-            rs, ok := store.Get(srcIP)
+            rs, ok := h.store.Get(srcIP)
             if !ok {
-                logger.Info("proxy request",
+                h.logger.Info("proxy request",
                     "action", "deny", "src_ip", srcIP,
                     "dst_host", dstHost, "dst_port", dstPort,
                     "reason", "no-rules")
@@ -226,14 +226,14 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
 
             for _, entry := range rs.Entries {
                 if rule.Matches(entry, dstHost, dstPort) {
-                    logger.Info("proxy request",
+                    h.logger.Info("proxy request",
                         "action", "allow", "src_ip", srcIP,
                         "dst_host", dstHost, "dst_port", dstPort)
                     return r, nil
                 }
             }
 
-            logger.Info("proxy request",
+            h.logger.Info("proxy request",
                 "action", "deny", "src_ip", srcIP,
                 "dst_host", dstHost, "dst_port", dstPort,
                 "reason", "denied")

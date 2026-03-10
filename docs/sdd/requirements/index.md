@@ -65,7 +65,7 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 ## スコープ外
 
 - TLS 終端・MITM による通信内容の検査
-- Management API の認証・認可機能（internal network 内利用のため不要）
+- Management API の認証・認可機能（`127.0.0.1` バインド固定により外部からのアクセスを遮断しているため不要）
 - ルールの永続化（再起動時はルールが消える。ClaudeWork が再登録する）
 - HTTP/2・gRPC プロキシ対応（HTTP/1.1 CONNECT のみ）
 - 複数インスタンスでの分散運用・ルール同期

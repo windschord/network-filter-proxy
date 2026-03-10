@@ -42,9 +42,26 @@ jobs:
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            github.rest.issues.createComment({
+            const marker = '<!-- textlint-bot -->';
+            const body = `${marker}\n:warning: Textlint検査で問題が検出されました。詳細はActionsログを確認してください。\n\nローカルで修正するには:\n\`\`\`bash\nnpm install\nnpm run textlint\nnpm run textlint:fix  # 自動修正を試みる\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: ':warning: Textlint検査で問題が検出されました。詳細はActionsログを確認してください。\n\nローカルで修正するには:\n```bash\nnpm install\nnpm run textlint\nnpm run textlint:fix  # 自動修正を試みる\n```'
-            })
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }
