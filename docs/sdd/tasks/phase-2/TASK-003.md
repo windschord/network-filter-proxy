@@ -59,6 +59,7 @@
 - [ ] 大文字入力: `API.ANTHROPIC.COM` → `{api.anthropic.com, 443}` にマッチ（正規化）
 - [ ] 末尾ドット: `api.anthropic.com.:443` → マッチ（正規化）
 - [ ] バリデーション: `*.*.example.com` → エラー
+- [ ] バリデーション: `*.`（空 apex）→ エラー
 - [ ] バリデーション: 空ホスト → エラー
 - [ ] バリデーション: port=99999 → エラー
 - [ ] `go test ./internal/rule/...` が全パスする
@@ -91,6 +92,7 @@ func TestMatches_NormalizeTrailingDot(t *testing.T) { ... }
 
 func TestValidateEntry_EmptyHost(t *testing.T) { ... }
 func TestValidateEntry_MultiLevelWildcard(t *testing.T) { ... }
+func TestValidateEntry_EmptyWildcardApex(t *testing.T) { ... }  // "*." → エラー
 func TestValidateEntry_InvalidPort(t *testing.T) { ... }
 func TestValidateEntry_ValidCIDR(t *testing.T) { ... }
 func TestValidateEntry_InvalidCIDR(t *testing.T) { ... }
