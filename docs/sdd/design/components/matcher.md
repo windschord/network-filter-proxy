@@ -47,7 +47,7 @@ Matches(entry, host, port):
      - entry.Port != 0 かつ entry.Port != port → false
   2. ホスト正規化
      - host = strings.ToLower(strings.TrimSuffix(host, "."))
-     - entryHost = strings.ToLower(entry.Host)
+     - entryHost = strings.ToLower(strings.TrimSuffix(entry.Host, "."))
   3. パターン判定
      a. CIDR 判定 (strings.Contains(entryHost, "/"))
         → net.ParseCIDR で CIDR パース

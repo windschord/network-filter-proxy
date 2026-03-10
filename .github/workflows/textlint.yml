@@ -7,6 +7,7 @@ on:
       - '**/*.md'
       - '.textlintrc.json'
       - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/textlint.yml'
   workflow_dispatch:
 
