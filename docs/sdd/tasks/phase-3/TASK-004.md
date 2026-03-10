@@ -89,6 +89,8 @@ import (
 // TestProxyHandler_UnregisteredIP_HTTP: 未登録 IP → 403 + X-Filter-Reason: no-rules（通常 HTTP GET）
 // TestProxyHandler_AllowedHost_HTTP: 許可済みルールにマッチ → 通過（通常 HTTP GET）
 // TestProxyHandler_DeniedHost_HTTP: 許可済みルールに不一致 → 403 + X-Filter-Reason: denied（通常 HTTP GET）
+// TestProxyHandler_HTTP_DefaultPort80: Host ヘッダーにポートなし（http スキーム）→ ポート 80 でルール照合
+// TestProxyHandler_HTTP_DefaultPort443: Host ヘッダーにポートなし（https スキーム）→ ポート 443 でルール照合
 ```
 
 テストを実行してコンパイルエラーを確認:
