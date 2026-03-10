@@ -94,7 +94,7 @@ func main() {
         Handler: proxyHandler,
     }
     apiSrv := &http.Server{
-        Addr:    ":" + cfg.APIPort,
+        Addr:    "127.0.0.1:" + cfg.APIPort,
         Handler: apiHandler.Routes(),
     }
 
@@ -113,7 +113,7 @@ func main() {
         }
     }()
     go func() {
-        log.Info("api server starting", "port", cfg.APIPort)
+        log.Info("api server starting", "addr", "127.0.0.1:"+cfg.APIPort)
         if err := apiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
             log.Error("api server error", "err", err)
             errCh <- err

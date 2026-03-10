@@ -67,6 +67,7 @@ Go モジュールを初期化し、環境変数から設定を読み込む `con
    - 環境変数未設定時にデフォルト値が返る
    - `PROXY_PORT=9999` 設定時に `Config.ProxyPort == "9999"` になる
    - `SHUTDOWN_TIMEOUT=60` 設定時に `Config.ShutdownTimeout == 60*time.Second` になる
+   - `SHUTDOWN_TIMEOUT=abc`（パース失敗）時に `Config.ShutdownTimeout == 30*time.Second` になる
 2. `internal/logger/logger_test.go` を作成し、以下のテストケースを実装する:
    - `New("json", "info")` で非 nil の `*slog.Logger` が返る
    - `New("text", "debug")` で非 nil の `*slog.Logger` が返る
@@ -149,7 +150,15 @@ func New(format, level string) *slog.Logger {
     default:
         lvl = slog.LevelInfo
     }
-    opts := &slog.HandlerOptions{Level: lvl}
+    opts := &slog.HandlerOptions{
+        Level: lvl,
+        ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+            if len(groups) == 0 && a.Key == slog.TimeKey {
+                a.Key = "timestamp" // "time" → "timestamp" (US-006 要件)
+            }
+            return a
+        },
+    }
     var handler slog.Handler
     if strings.ToLower(format) == "text" {
         handler = slog.NewTextHandler(os.Stdout, opts)

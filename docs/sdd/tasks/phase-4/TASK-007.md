@@ -29,7 +29,7 @@
 ### 使用技術
 
 - Docker: マルチステージビルド
-- ベースイメージ: `golang:1.24-alpine`（ビルド）/ `gcr.io/distroless/static`（実行）
+- ベースイメージ: `golang:1.26-alpine`（ビルド）/ `gcr.io/distroless/static`（実行）
 - CI: GitHub Actions
 - Linter: `golangci-lint`
 
@@ -60,27 +60,10 @@
 
 ### ステップ 1: Dockerfile を作成
 
-```dockerfile
-FROM golang:1.24-alpine AS builder
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /filter-proxy ./cmd/filter-proxy
-
-FROM gcr.io/distroless/static:nonroot
-COPY --from=builder /filter-proxy /filter-proxy
-EXPOSE 3128 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD ["/filter-proxy", "-health"]
-ENTRYPOINT ["/filter-proxy"]
-```
-
-**注意**: ヘルスチェック用に `-health` フラグで `GET /api/v1/health` を実行するサブコマンドの実装が必要。または Docker HEALTHCHECK を `none` にして外部ツールに委ねる。
-本タスクでは `HEALTHCHECK NONE` として、`docker compose` 側でヘルスチェックを設定する方針にする。
+**注意**: `gcr.io/distroless/static:nonroot` には `curl` が存在しないため `HEALTHCHECK` 命令は使用しない。ヘルスチェックは Docker Compose / Kubernetes の外部 HTTP プローブに委ねる（US-005）。
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -111,7 +94,7 @@ linters-settings:
     max-complexity: 10
 
 run:
-  go: "1.24"
+  go: "1.26"
   timeout: 5m
 ```
 
@@ -135,7 +118,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.26"
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
       - name: Check coverage
@@ -143,9 +126,9 @@ jobs:
           COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
           awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@971cd0a9f32b42f9b5a6e2979416e0e2e1573a7f  # v6.5.1
         with:
-          version: latest
+          version: v1.64.8
 
   build:
     runs-on: ubuntu-latest
@@ -164,7 +147,7 @@ jobs:
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Add Dockerfile and GitHub Actions CI
 ```
 

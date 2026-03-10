@@ -194,7 +194,7 @@
 - 認証: なし（internal network 内利用を前提）
 - CORS: 設定なし
 - レート制限: なし
-- **バインドアドレス**: Management API サーバーは `localhost`（`127.0.0.1`）または専用 internal network インターフェースにのみ bind すること。`0.0.0.0` への bind は禁止。デフォルト bind アドレスは設定値（`API_PORT`）に対応する内部インターフェースとする
+- **バインドアドレス**: Management API サーバーは `127.0.0.1`（loopback）または専用 internal network インターフェースにのみ bind すること。`0.0.0.0` への bind は禁止。デフォルトは `127.0.0.1`
 - **ネットワーク分離**: Docker ネットワーク設定により Management API ポート（:8080）は external network に露出しないこと（REQ-004-014）
 
 ## 関連コンポーネント

@@ -79,7 +79,7 @@ sequenceDiagram
                 ProxyHandler-->>Client: 502 Bad Gateway
             else 接続成功
                 ProxyHandler-->>Client: 200 Connection established
-                ProxyHandler->>ProxyHandler: TCP バイパイプ（TLS パススルー）
+                ProxyHandler->>ProxyHandler: TCP 双方向リレー（TLS パススルー）
             end
         end
     end
@@ -93,7 +93,9 @@ sequenceDiagram
 
 ```go
 host, _, err := net.SplitHostPort(r.RemoteAddr)
-// err が発生した場合は r.RemoteAddr をそのまま使用
+if err != nil {
+    host = r.RemoteAddr // ポート部分がない場合はそのまま使用
+}
 ```
 
 ---

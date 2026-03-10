@@ -155,12 +155,12 @@ filter-proxy/
 | テストカバレッジ | 80% 以上 | `go test -cover ./...` |
 | Linter | エラー 0 件 | `golangci-lint run` |
 | 競合検出 | 0 件 | `go test -race ./...` |
-| コード複雑性 | 循環的複雑度 10 以下 | `gocyclo` |
+| コード複雑性 | 循環的複雑度 10 以下 | `cyclop`（golangci-lint） |
 
 ### Docker ビルド
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -184,7 +184,7 @@ ENTRYPOINT ["/filter-proxy"]
 | REQ-001-001〜005 | ProxyHandler（goproxy + CONNECT） | 対応済 |
 | REQ-002-001〜010 | Matcher（完全一致・ワイルドカード・IP・CIDR） | 対応済 |
 | REQ-003-001〜004 | RuleStore（Get/デフォルト拒否） | 対応済 |
-| REQ-004-001〜013 | APIHandler（CRUD・バリデーション） | 対応済 |
+| REQ-004-001〜014 | APIHandler（CRUD・バリデーション・bind 制限） | 対応済 |
 | REQ-005-001〜003 | APIHandler（/health エンドポイント） | 対応済 |
 | REQ-006-001〜006 | Logger（slog・接続ログ・操作ログ） | 対応済 |
 | REQ-007-001〜005 | Server（signal.NotifyContext + Shutdown） | 対応済 |

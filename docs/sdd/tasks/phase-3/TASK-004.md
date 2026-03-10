@@ -83,9 +83,12 @@ import (
     "github.com/claudework/network-filter-proxy/internal/logger"
 )
 
-// TestProxyHandler_UnregisteredIP: 未登録 IP → 403 + X-Filter-Reason: no-rules
-// TestProxyHandler_AllowedHost: 許可済みルールにマッチ → 200
-// TestProxyHandler_DeniedHost: 許可済みルールに不一致 → 403 + X-Filter-Reason: denied
+// TestProxyHandler_UnregisteredIP: 未登録 IP → 403 + X-Filter-Reason: no-rules（CONNECT）
+// TestProxyHandler_AllowedHost: 許可済みルールにマッチ → 200（CONNECT）
+// TestProxyHandler_DeniedHost: 許可済みルールに不一致 → 403 + X-Filter-Reason: denied（CONNECT）
+// TestProxyHandler_UnregisteredIP_HTTP: 未登録 IP → 403 + X-Filter-Reason: no-rules（通常 HTTP GET）
+// TestProxyHandler_AllowedHost_HTTP: 許可済みルールにマッチ → 通過（通常 HTTP GET）
+// TestProxyHandler_DeniedHost_HTTP: 許可済みルールに不一致 → 403 + X-Filter-Reason: denied（通常 HTTP GET）
 ```
 
 テストを実行してコンパイルエラーを確認:
@@ -107,6 +110,7 @@ import (
     "net/http"
     "sync"
     "sync/atomic"
+    "time"
 
     "github.com/claudework/network-filter-proxy/internal/rule"
     "github.com/elazarl/goproxy"
@@ -165,7 +169,7 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
                     return &goproxy.ConnectAction{
                         Action: goproxy.OkConnect,
                         Dial: func(network, addr string) (net.Conn, error) {
-                            c, err := net.Dial(network, addr)
+                            c, err := net.DialTimeout(network, addr, 30*time.Second)
                             if err != nil {
                                 h.activeConn.Add(-1)
                                 return nil, err
@@ -274,7 +278,7 @@ go test -race ./internal/proxy/...
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Implement ProxyHandler with whitelist filtering
 ```
 
