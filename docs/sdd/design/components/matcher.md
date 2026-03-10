@@ -106,6 +106,7 @@ ValidateEntry(entry):
 - [ ] ポート省略: `api.anthropic.com:80` → エントリ `{api.anthropic.com, 0}` にマッチ
 - [ ] 正規化: `API.ANTHROPIC.COM:443` → エントリ `{api.anthropic.com, 443}` にマッチ
 - [ ] 正規化: `api.anthropic.com.:443`（末尾ドット）→ エントリ `{api.anthropic.com, 443}` にマッチ
+- [ ] 正規化: エントリ `{api.anthropic.com., 443}` → `api.anthropic.com:443` にマッチ（entry.Host 側の末尾ドット正規化）
 - [ ] バリデーション: `*.*.example.com` → エラー
 - [ ] バリデーション: 空ホスト → エラー
 - [ ] バリデーション: port=99999 → エラー

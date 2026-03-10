@@ -104,10 +104,10 @@ go test ./internal/proxy/...
 package proxy
 
 import (
-    "fmt"
     "log/slog"
     "net"
     "net/http"
+    "strconv"
     "sync"
     "sync/atomic"
     "time"
@@ -142,7 +142,8 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
     p.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(
         func(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
             srcIP := extractIP(ctx.Req.RemoteAddr)
-            dstHost, dstPort := splitHostPort(host)
+            // CONNECT リクエストの host は常に "hostname:port" 形式（HTTP 仕様上必須）
+            dstHost, dstPort := splitHostPort(host, 443)
 
             rs, ok := store.Get(srcIP)
             if !ok {
@@ -200,7 +201,12 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
     p.OnRequest().DoFunc(
         func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
             srcIP := extractIP(r.RemoteAddr)
-            dstHost, dstPort := splitHostPort(r.Host)
+            // Host ヘッダーにポートが含まれない場合はスキームからデフォルトポートを使用する
+            defaultPort := 80
+            if r.URL != nil && r.URL.Scheme == "https" {
+                defaultPort = 443
+            }
+            dstHost, dstPort := splitHostPort(r.Host, defaultPort)
 
             rs, ok := store.Get(srcIP)
             if !ok {
@@ -258,13 +264,16 @@ func extractIP(remoteAddr string) string {
     return host
 }
 
-func splitHostPort(hostport string) (string, int) {
+func splitHostPort(hostport string, defaultPort int) (string, int) {
     host, portStr, err := net.SplitHostPort(hostport)
     if err != nil {
-        return hostport, 0
+        // ポートなし（通常 HTTP の Host ヘッダーなど）→ デフォルトポートを使用
+        return hostport, defaultPort
     }
-    var port int
-    fmt.Sscan(portStr, &port)
+    port, err := strconv.Atoi(portStr)
+    if err != nil {
+        return host, defaultPort
+    }
     return host, port
 }
 ```

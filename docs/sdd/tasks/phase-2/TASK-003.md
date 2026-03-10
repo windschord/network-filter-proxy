@@ -173,6 +173,10 @@ func ValidateEntry(entry Entry) error {
     if strings.Contains(host, "://") {
         return fmt.Errorf("invalid host: scheme not allowed: %s", host)
     }
+    // 内部ホワイトスペースを拒否（TrimSpace では除去されない）
+    if strings.ContainsAny(host, " \t") {
+        return fmt.Errorf("invalid host: contains whitespace: %s", host)
+    }
     // ワイルドカードバリデーション
     if strings.Contains(host, "*") {
         wildcardCount := strings.Count(host, "*")
@@ -182,6 +186,11 @@ func ValidateEntry(entry Entry) error {
         // apex が空（"*." のみ）の場合はエラー
         if len(host) <= 2 {
             return fmt.Errorf("invalid wildcard pattern: %s (apex domain is empty)", host)
+        }
+        // apex 部分もホスト名バリデーションを適用（"*.api..github.com" 等を拒否）
+        apex := host[2:]
+        if err := validateHostname(apex); err != nil {
+            return fmt.Errorf("invalid wildcard apex %q: %w", apex, err)
         }
         return nil
     }
@@ -196,12 +205,23 @@ func ValidateEntry(entry Entry) error {
     if net.ParseIP(host) != nil {
         return nil
     }
-    // 完全一致ホスト名バリデーション（連続ドット・先頭末尾ドット等を拒否）
+    // 完全一致ホスト名バリデーション
+    return validateHostname(host)
+}
+
+// validateHostname は完全一致ホスト名のバリデーションを行う（連続ドット・ラベルのダッシュルール等）
+func validateHostname(host string) error {
     if strings.Contains(host, "..") {
         return fmt.Errorf("invalid host: consecutive dots: %s", host)
     }
     if strings.HasPrefix(host, ".") || strings.HasSuffix(host, ".") {
         return fmt.Errorf("invalid host: leading or trailing dot: %s", host)
+    }
+    // 各ラベルの先頭・末尾ダッシュを拒否（RFC 952 / RFC 1123）
+    for _, label := range strings.Split(host, ".") {
+        if strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
+            return fmt.Errorf("invalid host: label starts or ends with '-': %s", host)
+        }
     }
     return nil
 }

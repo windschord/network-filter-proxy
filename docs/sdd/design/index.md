@@ -124,6 +124,7 @@ filter-proxy/
 - **デフォルト拒否**: 未登録 IP からの全通信を 403 で拒否（NFR-SEC-001）
 - **TLS 非終端**: CONNECT トンネル後はバイパイプのみ。証明書生成・置換は行わない（NFR-SEC-002）
 - **ホスト正規化**: `strings.ToLower` + 末尾ドット除去でバイパス攻撃を防止（NFR-SEC-004）
+- **ホスト検証**: `ValidateEntry` でスキーム混入・内部ホワイトスペース・連続ドット・ラベル先頭末尾ダッシュ等の不正値を拒否（NFR-SEC-004）
 - **競合防止**: `sync.RWMutex` で RuleStore を保護。`go test -race` で検証（NFR-SEC-005）
 - **API 露出防止**: Management API（:8080）は internal network のみに公開（NFR-SEC-003）
 
