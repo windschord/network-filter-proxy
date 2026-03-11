@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -241,9 +240,10 @@ func splitHostPort(hostport string, defaultPort int) (string, int) {
 	host, portStr, err := net.SplitHostPort(hostport)
 	if err != nil {
 		// Strip IPv6 brackets if present (e.g. "[2001:db8::1]" -> "2001:db8::1")
-		h := strings.TrimPrefix(hostport, "[")
-		h = strings.TrimSuffix(h, "]")
-		return h, defaultPort
+		if len(hostport) >= 2 && hostport[0] == '[' && hostport[len(hostport)-1] == ']' {
+			return hostport[1 : len(hostport)-1], defaultPort
+		}
+		return hostport, defaultPort
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
