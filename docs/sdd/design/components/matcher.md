@@ -53,7 +53,8 @@ Matches(entry, host, port):
         → net.ParseCIDR で CIDR パース
         → net.ParseIP(host) が CIDR 内なら true
      b. IP 判定 (net.ParseIP(entryHost) != nil)
-        → host == entryHost なら true
+        → net.ParseIP(host).Equal(net.ParseIP(entryHost)) なら true
+          （文字列比較では IPv6 の正規化が機能しないため、必ず IP.Equal() で比較する）
      c. ワイルドカード判定 (strings.HasPrefix(entryHost, "*."))
         → apex = entryHost[2:]  // "example.com"
         → host == apex なら true（apex 完全一致）
@@ -117,6 +118,10 @@ ValidateEntry(entry):
 - [ ] バリデーション: `*.*.example.com` → エラー
 - [ ] バリデーション: 空ホスト → エラー
 - [ ] バリデーション: port=99999 → エラー
+- [ ] IPv6 完全一致: `[::1]:443`（圧縮形式）→ エントリ `{0:0:0:0:0:0:0:1, 443}` にマッチ（IPv6 正規化）
+- [ ] IPv6 完全一致: `[2001:db8::1]:443`（圧縮）→ エントリ `{2001:0db8:0000:0000:0000:0000:0000:0001, 443}` にマッチ（展開形式との一致）
+- [ ] IPv6 CIDR: `[2001:db8::1]:443` → エントリ `{2001:db8::/32, 443}` にマッチ
+- [ ] IPv6 CIDR: `[2001:db9::1]:443` → エントリ `{2001:db8::/32, 443}` に不一致
 
 ## 関連要件
 

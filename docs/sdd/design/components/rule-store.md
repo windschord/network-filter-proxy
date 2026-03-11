@@ -64,8 +64,10 @@ type Store struct {
 #### `DeleteAll()`
 全ルールセットを削除する。
 
-#### `All() map[string]*RuleSet`
-全ルールセットのスナップショットコピーを返す（呼び出し元が変更しても元マップに影響しない）。
+#### `All() map[string]RuleSet`
+全ルールセットのディープコピーを返す。マップ自体と各 `RuleSet`（`Entries` スライスを含む）を値でコピーする。
+呼び出し元がマップや各 `RuleSet` の `Entries` を変更しても内部ストアに影響しない。
+戻り値型は `map[string]*RuleSet`（ポインタ）ではなく `map[string]RuleSet`（値）とする。
 
 #### `Count() int`
 登録済みルールセット数を返す。

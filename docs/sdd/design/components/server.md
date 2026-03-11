@@ -135,9 +135,67 @@ filter-proxy/
 - [ ] 正常系: SHUTDOWN_TIMEOUT 秒以内に強制終了する
 - [ ] 正常系: 環境変数未設定時にデフォルト値が使用される
 
+## CONNECT トンネルのトラッキングとシャットダウン
+
+`net/http` の `Server.Shutdown()` は hijacked connections（HTTP CONNECT で確立された TCP トンネル）を閉じない。
+シャットダウン時にアクティブな CONNECT トンネルを確実に回収するために、以下の設計を採用する。
+
+### トンネルトラッキング設計
+
+ProxyHandler は `trackingConn` でトンネル接続をラップし、接続のライフサイクルを管理する。
+Shutdown 時には ProxyHandler の `CloseAllTunnels()` を呼び出してアクティブなトンネルを強制クローズする。
+
+```go
+// ProxyHandler に CloseAllTunnels() を追加
+type Handler struct {
+    store      *rule.Store
+    logger     *slog.Logger
+    activeConn atomic.Int64
+    proxy      *goproxy.ProxyHttpServer
+    mu         sync.Mutex
+    tunnels    []net.Conn // アクティブなトンネル接続のリスト
+}
+
+// CloseAllTunnels はアクティブな全トンネル接続を強制クローズする
+// Graceful Shutdown 時に呼び出す
+func (h *Handler) CloseAllTunnels() {
+    h.mu.Lock()
+    defer h.mu.Unlock()
+    for _, c := range h.tunnels {
+        _ = c.Close()
+    }
+    h.tunnels = nil
+}
+```
+
+### Graceful Shutdown フローへの統合
+
+```go
+// main.go の Shutdown 処理に CloseAllTunnels を追加
+log.Info("shutdown initiated")
+shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+defer cancel()
+
+// 1. まず新規受付を停止
+var wg sync.WaitGroup
+for _, srv := range []*http.Server{proxySrv, apiSrv} {
+    wg.Add(1)
+    go func(s *http.Server) {
+        defer wg.Done()
+        _ = s.Shutdown(shutdownCtx)
+    }(srv)
+}
+wg.Wait()
+
+// 2. Server.Shutdown() 完了後、残存 CONNECT トンネルを強制クローズ
+proxyHandler.CloseAllTunnels()
+log.Info("shutdown complete")
+```
+
 ## 注意事項
 
-- `net/http` の `Server.Shutdown()` は hijacked connections（HTTP CONNECT で確立された TCP トンネル）を閉じない。CONNECT トンネルは `Shutdown()` 完了後もアクティブな接続が残る場合がある。長時間の SHUTDOWN_TIMEOUT を設定するか、アクティブ接続数をモニタリングして運用上対処すること
+- `net/http` の `Server.Shutdown()` は hijacked connections（HTTP CONNECT で確立された TCP トンネル）を閉じない。上記のトンネルトラッキング設計を実装してシャットダウン時に `CloseAllTunnels()` を呼び出すこと
+- `SHUTDOWN_TIMEOUT` は `Server.Shutdown()` の待機時間を制御する。トンネルのクローズは `Server.Shutdown()` 完了後に同期的に行う
 
 ## 関連要件
 

@@ -17,7 +17,7 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 │                 ▼  ▼                                   │
 │  [Filter Proxy Container]                              │
 │    :3128  - forward proxy (CONNECT 対応)               │
-│    :8080  - management API                             │
+│    127.0.0.1:8080  - management API (localhost only)   │
 └────────┼───────────────────────────────────────────────┘
          │ (external network にも接続)
          ▼

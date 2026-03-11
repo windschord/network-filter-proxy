@@ -91,6 +91,9 @@ import (
 // TestProxyHandler_DeniedHost_HTTP: 許可済みルールに不一致 → 403 + X-Filter-Reason: denied（通常 HTTP GET）
 // TestProxyHandler_HTTP_DefaultPort80: Host ヘッダーにポートなし（http スキーム）→ ポート 80 でルール照合
 // TestProxyHandler_HTTP_DefaultPort443: Host ヘッダーにポートなし（https スキーム）→ ポート 443 でルール照合
+// TestProxyHandler_ActiveConn_Increment: 接続許可時に ActiveConnections() が 1 増加する
+// TestProxyHandler_ActiveConn_Decrement: トンネル切断時に ActiveConnections() が 1 減少する（trackingConn.Close で確認）
+// TestProxyHandler_ActiveConn_DialFail: Dial 失敗時に activeConn がリークしない（Add(1) した後に Add(-1) される）
 ```
 
 テストを実行してコンパイルエラーを確認:
@@ -208,7 +211,13 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
             if r.URL != nil && r.URL.Scheme == "https" {
                 defaultPort = 443
             }
-            dstHost, dstPort := splitHostPort(r.Host, defaultPort)
+            // r.URL.Host を優先し（プロキシ経由リクエストでは絶対 URI が入る）、
+            // 空の場合は r.Host（Host ヘッダー）にフォールバックする
+            hostHeader := r.Host
+            if r.URL != nil && r.URL.Host != "" {
+                hostHeader = r.URL.Host
+            }
+            dstHost, dstPort := splitHostPort(hostHeader, defaultPort)
 
             rs, ok := h.store.Get(srcIP)
             if !ok {
