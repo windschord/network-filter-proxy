@@ -68,9 +68,13 @@ func ValidateEntry(entry Entry) error {
 	if strings.ContainsAny(host, " \t") {
 		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
 	}
-	// Reject host:port format (port is a separate field)
+	// Reject host:port format (port is a separate field).
+	// Also reject bare colons in non-IP hosts (e.g. "example.com:").
 	if _, _, err := net.SplitHostPort(host); err == nil {
 		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: must not contain port: %s", host)}
+	}
+	if strings.Contains(host, ":") && net.ParseIP(host) == nil && !strings.Contains(host, "/") {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: unexpected colon: %s", host)}
 	}
 
 	if strings.Contains(host, "*") {

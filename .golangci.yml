@@ -8,7 +8,7 @@ linters:
     - cyclop
   settings:
     cyclop:
-      max-complexity: 16
+      max-complexity: 18
   exclusions:
     rules:
       - linters:

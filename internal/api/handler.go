@@ -2,9 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
-	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -160,6 +160,14 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Entries == nil {
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
+			Error:   "invalid_request",
+			Message: "entries field is required",
+		})
+		return
+	}
+
 	var details []ErrorDetail
 	entries := make([]rule.Entry, len(req.Entries))
 	for i, e := range req.Entries {
@@ -245,17 +253,18 @@ func (h *Handler) handleDeleteAllRules(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// normalizeIP parses and normalizes an IP address string.
-// Returns the normalized IP string and true, or empty string and false if invalid.
+// normalizeIP parses and normalizes an IPv4 address string.
+// Returns the normalized IP string and true, or empty string and false if invalid or not IPv4.
 func normalizeIP(s string) (string, bool) {
 	ip := net.ParseIP(s)
 	if ip == nil {
 		return "", false
 	}
-	if v4 := ip.To4(); v4 != nil {
-		return v4.String(), true
+	v4 := ip.To4()
+	if v4 == nil {
+		return "", false
 	}
-	return ip.String(), true
+	return v4.String(), true
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
