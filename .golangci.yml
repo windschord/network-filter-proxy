@@ -1,0 +1,17 @@
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - cyclop
+
+linters-settings:
+  cyclop:
+    max-complexity: 10
+
+run:
+  go: "1.26"
+  timeout: 5m

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./...
+      - name: Check coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "Coverage: ${COVERAGE}%"
+          awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@971cd0a9f32b42f9b5a6e2979416e0e2e1573a7f  # v6.5.1
+        with:
+          version: v1.64.8
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t filter-proxy .
+      - name: Check image size
+        run: |
+          SIZE=$(docker image inspect filter-proxy --format='{{.Size}}')
+          echo "Image size: $SIZE bytes"
+          # 30MB = 31457280 bytes
+          [ "$SIZE" -lt "31457280" ] && echo "OK: under 30MB" || (echo "FAIL: Image too large" && exit 1)

@@ -144,6 +144,46 @@ func TestDeleteRulesByIP_NotFound(t *testing.T) {
 	}
 }
 
+func TestGetRules_WithData(t *testing.T) {
+	handler, store := newTestAPI(t)
+
+	store.Set("10.0.0.1", []rule.Entry{{Host: "example.com", Port: 443}})
+
+	req := httptest.NewRequest("GET", "/api/v1/rules", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	rules, ok := resp["rules"].(map[string]any)
+	if !ok {
+		t.Fatal("expected 'rules' to be a map")
+	}
+	if len(rules) != 1 {
+		t.Errorf("expected 1 rule, got %d", len(rules))
+	}
+}
+
+func TestPutRules_InvalidJSON(t *testing.T) {
+	handler, _ := newTestAPI(t)
+
+	body := `{invalid json`
+	req := httptest.NewRequest("PUT", "/api/v1/rules/172.20.0.3", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
 func TestDeleteAllRules(t *testing.T) {
 	handler, store := newTestAPI(t)
 
