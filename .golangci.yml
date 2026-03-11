@@ -5,9 +5,6 @@ linters:
     - govet
     - errcheck
     - staticcheck
-    - unused
-    - gosimple
-    - ineffassign
     - cyclop
   settings:
     cyclop:

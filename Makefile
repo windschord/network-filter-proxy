@@ -9,11 +9,18 @@ GITHUB_REPO ?= $(shell git remote get-url origin 2>/dev/null \
 # 現在チェックアウト中のブランチに紐付く PR 番号を自動取得
 PR_NUMBER ?= $(shell gh pr view --json number -q .number 2>/dev/null || echo "")
 
-.PHONY: help pr-check pr-fix pr-fix-unsafe
+.PHONY: help pr-check pr-fix pr-fix-unsafe swagger
 
 help: ## このヘルプを表示
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+# ------------------------------------------------------------------
+# OpenAPI / Swagger
+# ------------------------------------------------------------------
+
+swagger: ## swag init で OpenAPI ドキュメントを再生成
+	swag init -g cmd/filter-proxy/main.go -o docs/swagger --outputTypes yaml
 
 # ------------------------------------------------------------------
 # PR レビュー対応

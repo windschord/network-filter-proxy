@@ -1,0 +1,184 @@
+basePath: /
+definitions:
+  api.EntryJSON:
+    properties:
+      host:
+        example: api.anthropic.com
+        type: string
+      port:
+        example: 443
+        type: integer
+    type: object
+  api.ErrorDetail:
+    properties:
+      field:
+        example: entries[0].host
+        type: string
+      message:
+        example: invalid wildcard pattern
+        type: string
+    type: object
+  api.ErrorResponse:
+    properties:
+      details:
+        items:
+          $ref: '#/definitions/api.ErrorDetail'
+        type: array
+      error:
+        example: validation_error
+        type: string
+      message:
+        example: invalid host pattern
+        type: string
+    type: object
+  api.HealthResponse:
+    properties:
+      active_connections:
+        example: 5
+        type: integer
+      rule_count:
+        example: 3
+        type: integer
+      status:
+        example: ok
+        type: string
+      uptime_seconds:
+        example: 3600
+        type: integer
+    type: object
+  api.PutRulesRequest:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/api.EntryJSON'
+        type: array
+    type: object
+  api.PutRulesResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/api.EntryJSON'
+        type: array
+      source_ip:
+        example: 172.20.0.3
+        type: string
+      updated_at:
+        type: string
+    type: object
+  api.RuleSetJSON:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/api.EntryJSON'
+        type: array
+      updated_at:
+        type: string
+    type: object
+  api.RulesResponse:
+    properties:
+      rules:
+        additionalProperties:
+          $ref: '#/definitions/api.RuleSetJSON'
+        type: object
+    type: object
+host: 127.0.0.1:8080
+info:
+  contact: {}
+  description: Management REST API for the Network Filter Proxy. Provides CRUD operations
+    for whitelist rule sets and a health check endpoint.
+  license:
+    name: MIT
+  title: Network Filter Proxy Management API
+  version: 1.0.0
+paths:
+  /api/v1/health:
+    get:
+      description: Returns the health status of the proxy and API server
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HealthResponse'
+      summary: Health check
+      tags:
+      - Health
+  /api/v1/rules:
+    delete:
+      description: Deletes all rule sets for all source IPs
+      responses:
+        "204":
+          description: All rules deleted
+      summary: Delete all rules
+      tags:
+      - Rules
+    get:
+      description: Returns all registered whitelist rule sets keyed by source IP
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.RulesResponse'
+      summary: List all rules
+      tags:
+      - Rules
+  /api/v1/rules/{sourceIP}:
+    delete:
+      description: Deletes the rule set for the given source IP
+      parameters:
+      - description: Source IPv4 address
+        example: 172.20.0.3
+        in: path
+        name: sourceIP
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Rules deleted
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete rules for a source IP
+      tags:
+      - Rules
+    put:
+      consumes:
+      - application/json
+      description: Replaces the entire rule set for the given source IP
+      parameters:
+      - description: Source IPv4 address
+        example: 172.20.0.3
+        in: path
+        name: sourceIP
+        required: true
+        type: string
+      - description: Rule entries
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.PutRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.PutRulesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Set rules for a source IP
+      tags:
+      - Rules
+securityDefinitions:
+  none:
+    type: basic
+swagger: "2.0"

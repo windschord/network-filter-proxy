@@ -11,6 +11,7 @@ import (
 	"github.com/claudework/network-filter-proxy/internal/rule"
 )
 
+// Handler is the Management API handler.
 type Handler struct {
 	store        *rule.Store
 	logger       *slog.Logger
@@ -18,37 +19,54 @@ type Handler struct {
 	startTime    time.Time
 }
 
-type entryJSON struct {
-	Host string `json:"host"`
-	Port int    `json:"port,omitempty"`
+// EntryJSON represents a whitelist entry in API requests/responses.
+type EntryJSON struct {
+	Host string `json:"host" example:"api.anthropic.com"`
+	Port int    `json:"port,omitempty" example:"443"`
 }
 
-type putRulesRequest struct {
-	Entries []entryJSON `json:"entries"`
+// PutRulesRequest is the request body for PUT /api/v1/rules/{sourceIP}.
+type PutRulesRequest struct {
+	Entries []EntryJSON `json:"entries"`
 }
 
-type putRulesResponse struct {
-	SourceIP  string      `json:"source_ip"`
-	Entries   []entryJSON `json:"entries"`
+// PutRulesResponse is the response body for PUT /api/v1/rules/{sourceIP}.
+type PutRulesResponse struct {
+	SourceIP  string      `json:"source_ip" example:"172.20.0.3"`
+	Entries   []EntryJSON `json:"entries"`
 	UpdatedAt time.Time   `json:"updated_at"`
 }
 
-type errorResponse struct {
-	Error   string        `json:"error"`
-	Message string        `json:"message"`
-	Details []errorDetail `json:"details,omitempty"`
+// ErrorResponse represents an API error.
+type ErrorResponse struct {
+	Error   string        `json:"error" example:"validation_error"`
+	Message string        `json:"message" example:"invalid host pattern"`
+	Details []ErrorDetail `json:"details,omitempty"`
 }
 
-type errorDetail struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
+// ErrorDetail provides field-level error information.
+type ErrorDetail struct {
+	Field   string `json:"field" example:"entries[0].host"`
+	Message string `json:"message" example:"invalid wildcard pattern"`
 }
 
-type healthResponse struct {
-	Status            string `json:"status"`
-	UptimeSeconds     int64  `json:"uptime_seconds"`
-	ActiveConnections int64  `json:"active_connections"`
-	RuleCount         int    `json:"rule_count"`
+// HealthResponse is the response body for GET /api/v1/health.
+type HealthResponse struct {
+	Status            string `json:"status" example:"ok"`
+	UptimeSeconds     int64  `json:"uptime_seconds" example:"3600"`
+	ActiveConnections int64  `json:"active_connections" example:"5"`
+	RuleCount         int    `json:"rule_count" example:"3"`
+}
+
+// RulesResponse is the response body for GET /api/v1/rules.
+type RulesResponse struct {
+	Rules map[string]RuleSetJSON `json:"rules"`
+}
+
+// RuleSetJSON represents a rule set in API responses.
+type RuleSetJSON struct {
+	Entries   []EntryJSON `json:"entries"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 func NewHandler(store *rule.Store, logger *slog.Logger, proxyHandler *proxy.Handler) *Handler {
@@ -70,8 +88,16 @@ func (h *Handler) Routes() http.Handler {
 	return mux
 }
 
+// handleHealth godoc
+//
+//	@Summary		Health check
+//	@Description	Returns the health status of the proxy and API server
+//	@Tags			Health
+//	@Produce		json
+//	@Success		200	{object}	HealthResponse
+//	@Router			/api/v1/health [get]
 func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
-	resp := healthResponse{
+	resp := HealthResponse{
 		Status:            "ok",
 		UptimeSeconds:     int64(time.Since(h.startTime).Seconds()),
 		ActiveConnections: h.proxyHandler.ActiveConnections(),
@@ -80,40 +106,57 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// handleGetRules godoc
+//
+//	@Summary		List all rules
+//	@Description	Returns all registered whitelist rule sets keyed by source IP
+//	@Tags			Rules
+//	@Produce		json
+//	@Success		200	{object}	RulesResponse
+//	@Router			/api/v1/rules [get]
 func (h *Handler) handleGetRules(w http.ResponseWriter, r *http.Request) {
 	all := h.store.All()
-	result := make(map[string]any, len(all))
+	result := make(map[string]RuleSetJSON, len(all))
 	for ip, rs := range all {
-		entries := make([]entryJSON, len(rs.Entries))
+		entries := make([]EntryJSON, len(rs.Entries))
 		for i, e := range rs.Entries {
-			entries[i] = entryJSON{Host: e.Host, Port: e.Port}
+			entries[i] = EntryJSON{Host: e.Host, Port: e.Port}
 		}
-		result[ip] = map[string]any{
-			"entries":    entries,
-			"updated_at": rs.UpdatedAt,
-		}
+		result[ip] = RuleSetJSON{Entries: entries, UpdatedAt: rs.UpdatedAt}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"rules": result})
+	writeJSON(w, http.StatusOK, RulesResponse{Rules: result})
 }
 
+// handlePutRules godoc
+//
+//	@Summary		Set rules for a source IP
+//	@Description	Replaces the entire rule set for the given source IP
+//	@Tags			Rules
+//	@Accept			json
+//	@Produce		json
+//	@Param			sourceIP	path		string			true	"Source IPv4 address"	example(172.20.0.3)
+//	@Param			body		body		PutRulesRequest	true	"Rule entries"
+//	@Success		200			{object}	PutRulesResponse
+//	@Failure		400			{object}	ErrorResponse
+//	@Router			/api/v1/rules/{sourceIP} [put]
 func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	sourceIP := r.PathValue("sourceIP")
 
-	var req putRulesRequest
+	var req PutRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, errorResponse{
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: "failed to parse request body: " + err.Error(),
 		})
 		return
 	}
 
-	var details []errorDetail
+	var details []ErrorDetail
 	entries := make([]rule.Entry, len(req.Entries))
 	for i, e := range req.Entries {
 		entry := rule.Entry{Host: e.Host, Port: e.Port}
 		if err := rule.ValidateEntry(entry); err != nil {
-			details = append(details, errorDetail{
+			details = append(details, ErrorDetail{
 				Field:   fmt.Sprintf("entries[%d].host", i),
 				Message: err.Error(),
 			})
@@ -122,7 +165,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(details) > 0 {
-		writeJSON(w, http.StatusBadRequest, errorResponse{
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "validation_error",
 			Message: fmt.Sprintf("invalid host pattern: %s", req.Entries[0].Host),
 			Details: details,
@@ -134,21 +177,31 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("rules updated", "operation", "set", "src_ip", sourceIP, "entry_count", len(entries))
 
 	rs, _ := h.store.Get(sourceIP)
-	respEntries := make([]entryJSON, len(rs.Entries))
+	respEntries := make([]EntryJSON, len(rs.Entries))
 	for i, e := range rs.Entries {
-		respEntries[i] = entryJSON{Host: e.Host, Port: e.Port}
+		respEntries[i] = EntryJSON{Host: e.Host, Port: e.Port}
 	}
-	writeJSON(w, http.StatusOK, putRulesResponse{
+	writeJSON(w, http.StatusOK, PutRulesResponse{
 		SourceIP:  sourceIP,
 		Entries:   respEntries,
 		UpdatedAt: rs.UpdatedAt,
 	})
 }
 
+// handleDeleteRulesByIP godoc
+//
+//	@Summary		Delete rules for a source IP
+//	@Description	Deletes the rule set for the given source IP
+//	@Tags			Rules
+//	@Produce		json
+//	@Param			sourceIP	path	string	true	"Source IPv4 address"	example(172.20.0.3)
+//	@Success		204			"Rules deleted"
+//	@Failure		404			{object}	ErrorResponse
+//	@Router			/api/v1/rules/{sourceIP} [delete]
 func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) {
 	sourceIP := r.PathValue("sourceIP")
 	if !h.store.Delete(sourceIP) {
-		writeJSON(w, http.StatusNotFound, errorResponse{
+		writeJSON(w, http.StatusNotFound, ErrorResponse{
 			Error:   "not_found",
 			Message: fmt.Sprintf("no rules found for source IP: %s", sourceIP),
 		})
@@ -158,6 +211,13 @@ func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleDeleteAllRules godoc
+//
+//	@Summary		Delete all rules
+//	@Description	Deletes all rule sets for all source IPs
+//	@Tags			Rules
+//	@Success		204	"All rules deleted"
+//	@Router			/api/v1/rules [delete]
 func (h *Handler) handleDeleteAllRules(w http.ResponseWriter, r *http.Request) {
 	h.store.DeleteAll()
 	h.logger.Info("all rules deleted", "operation", "delete_all")

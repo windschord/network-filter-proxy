@@ -1,3 +1,12 @@
+// Network Filter Proxy
+//
+//	@title						Network Filter Proxy Management API
+//	@version					1.0.0
+//	@description				Management REST API for the Network Filter Proxy. Provides CRUD operations for whitelist rule sets and a health check endpoint.
+//	@host						127.0.0.1:8080
+//	@BasePath					/
+//	@license.name				MIT
+//	@securityDefinitions.basic	none
 package main
 
 import (
