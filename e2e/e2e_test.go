@@ -64,7 +64,9 @@ func TestE2E_HealthCheck(t *testing.T) {
 	}
 
 	var health map[string]any
-	json.NewDecoder(resp.Body).Decode(&health)
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatalf("failed to decode health response: %v", err)
+	}
 	if health["status"] != "ok" {
 		t.Errorf("health status = %v, want %q", health["status"], "ok")
 	}
@@ -103,7 +105,9 @@ func TestE2E_RulesCRUD(t *testing.T) {
 		t.Fatalf("get rules failed: %v", err)
 	}
 	var rulesResp map[string]any
-	json.NewDecoder(resp.Body).Decode(&rulesResp)
+	if err := json.NewDecoder(resp.Body).Decode(&rulesResp); err != nil {
+		t.Fatalf("failed to decode rules response: %v", err)
+	}
 	resp.Body.Close()
 	rules := rulesResp["rules"].(map[string]any)
 	if len(rules) != 1 {
@@ -127,7 +131,9 @@ func TestE2E_RulesCRUD(t *testing.T) {
 		t.Fatalf("health check failed: %v", err)
 	}
 	var health map[string]any
-	json.NewDecoder(resp.Body).Decode(&health)
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatalf("failed to decode health response: %v", err)
+	}
 	resp.Body.Close()
 	if health["rule_count"].(float64) != 0 {
 		t.Errorf("rule_count = %v, want 0", health["rule_count"])
@@ -275,7 +281,9 @@ func TestE2E_ValidationError(t *testing.T) {
 	}
 
 	var errResp map[string]any
-	json.NewDecoder(resp.Body).Decode(&errResp)
+	if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
 	if errResp["error"] != "validation_error" {
 		t.Errorf("error = %v, want %q", errResp["error"], "validation_error")
 	}
@@ -296,7 +304,9 @@ func TestE2E_DeleteAllRules(t *testing.T) {
 	// Verify 3 rules
 	resp, _ := http.Get(env.apiServer.URL + "/api/v1/health")
 	var health map[string]any
-	json.NewDecoder(resp.Body).Decode(&health)
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatalf("failed to decode health response: %v", err)
+	}
 	resp.Body.Close()
 	if health["rule_count"].(float64) != 3 {
 		t.Fatalf("rule_count = %v, want 3", health["rule_count"])
@@ -312,7 +322,9 @@ func TestE2E_DeleteAllRules(t *testing.T) {
 
 	// Verify 0 rules
 	resp, _ = http.Get(env.apiServer.URL + "/api/v1/health")
-	json.NewDecoder(resp.Body).Decode(&health)
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatalf("failed to decode health response: %v", err)
+	}
 	resp.Body.Close()
 	if health["rule_count"].(float64) != 0 {
 		t.Errorf("rule_count after delete all = %v, want 0", health["rule_count"])
@@ -325,7 +337,9 @@ func TestE2E_ActiveConnections(t *testing.T) {
 	// Initially 0 active connections
 	resp, _ := http.Get(env.apiServer.URL + "/api/v1/health")
 	var health map[string]any
-	json.NewDecoder(resp.Body).Decode(&health)
+	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+		t.Fatalf("failed to decode health response: %v", err)
+	}
 	resp.Body.Close()
 	if health["active_connections"].(float64) != 0 {
 		t.Errorf("active_connections = %v, want 0", health["active_connections"])

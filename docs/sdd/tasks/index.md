@@ -46,7 +46,7 @@
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
 | TASK-002 | RuleStore 実装（メモリ内ルール CRUD） | DONE | TASK-001 | 25min | [詳細](phase-2/TASK-002.md) @phase-2/TASK-002.md |
-| TASK-003 | Matcher 実装（ホスト・ポートマッチング + バリデーション） | DONE | TASK-001 | 30min | [詳細](phase-2/TASK-003.md) @phase-2/TASK-003.md |
+| TASK-003 | Matcher 実装（ホスト・ポートマッチング + バリデーション） | DONE | TASK-002 | 30min | [詳細](phase-2/TASK-003.md) @phase-2/TASK-003.md |
 
 ### Phase 3: サーバー実装
 *推定期間: 45分（AIエージェント作業時間・並列実行可能）*

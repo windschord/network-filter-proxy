@@ -20,6 +20,8 @@ type Handler struct {
 	logger     *slog.Logger
 	activeConn atomic.Int64
 	proxy      *goproxy.ProxyHttpServer
+	tunnelMu   sync.Mutex
+	tunnels    []net.Conn
 }
 
 func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
@@ -134,6 +136,7 @@ func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.Pr
 	}
 
 	h.activeConn.Add(1)
+	h.trackTunnel(client, remote)
 	_, _ = fmt.Fprintf(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
 
 	var wg sync.WaitGroup
@@ -150,6 +153,22 @@ func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.Pr
 	}()
 	wg.Wait()
 	h.activeConn.Add(-1)
+}
+
+func (h *Handler) trackTunnel(conns ...net.Conn) {
+	h.tunnelMu.Lock()
+	defer h.tunnelMu.Unlock()
+	h.tunnels = append(h.tunnels, conns...)
+}
+
+// Shutdown closes all tracked tunnel connections.
+func (h *Handler) Shutdown() {
+	h.tunnelMu.Lock()
+	defer h.tunnelMu.Unlock()
+	for _, c := range h.tunnels {
+		_ = c.Close()
+	}
+	h.tunnels = nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

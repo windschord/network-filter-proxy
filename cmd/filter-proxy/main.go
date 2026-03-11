@@ -25,6 +25,8 @@ import (
 	"github.com/claudework/network-filter-proxy/internal/rule"
 )
 
+var version = "dev"
+
 func run() int {
 	cfg := config.Load()
 	log := logger.New(cfg.LogFormat, cfg.LogLevel)
@@ -47,7 +49,7 @@ func run() int {
 
 	errCh := make(chan error, 2)
 	go func() {
-		log.Info("proxy server starting", "port", cfg.ProxyPort)
+		log.Info("proxy server starting", "port", cfg.ProxyPort, "version", version)
 		if err := proxySrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("proxy server error", "err", err)
 			errCh <- err
@@ -85,6 +87,7 @@ func run() int {
 		}(srv)
 	}
 	wg.Wait()
+	proxyHandler.Shutdown()
 	log.Info("shutdown complete")
 	return exitCode
 }

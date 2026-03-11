@@ -1,6 +1,7 @@
 package rule_test
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 
@@ -117,11 +118,11 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 		go func(ip string) {
 			defer wg.Done()
 			s.Set(ip, []rule.Entry{{Host: "example.com", Port: 443}})
-		}("10.0.0." + string(rune('0'+i%10)))
+		}("10.0.0." + strconv.Itoa(i%10))
 		go func(ip string) {
 			defer wg.Done()
 			s.Get(ip)
-		}("10.0.0." + string(rune('0'+i%10)))
+		}("10.0.0." + strconv.Itoa(i%10))
 	}
 	wg.Wait()
 }

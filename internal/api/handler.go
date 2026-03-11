@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/claudework/network-filter-proxy/internal/proxy"
@@ -22,7 +24,7 @@ type Handler struct {
 // EntryJSON represents a whitelist entry in API requests/responses.
 type EntryJSON struct {
 	Host string `json:"host" example:"api.anthropic.com"`
-	Port int    `json:"port,omitempty" example:"443"`
+	Port int    `json:"port" example:"443"`
 }
 
 // PutRulesRequest is the request body for PUT /api/v1/rules/{sourceIP}.
@@ -142,6 +144,14 @@ func (h *Handler) handleGetRules(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	sourceIP := r.PathValue("sourceIP")
 
+	if net.ParseIP(sourceIP) == nil {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+			Error:   "invalid_request",
+			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
+		})
+		return
+	}
+
 	var req PutRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{
@@ -156,8 +166,12 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	for i, e := range req.Entries {
 		entry := rule.Entry{Host: e.Host, Port: e.Port}
 		if err := rule.ValidateEntry(entry); err != nil {
+			field := fmt.Sprintf("entries[%d].host", i)
+			if strings.Contains(err.Error(), "port") {
+				field = fmt.Sprintf("entries[%d].port", i)
+			}
 			details = append(details, ErrorDetail{
-				Field:   fmt.Sprintf("entries[%d].host", i),
+				Field:   field,
 				Message: err.Error(),
 			})
 		}
@@ -167,16 +181,15 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	if len(details) > 0 {
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "validation_error",
-			Message: fmt.Sprintf("invalid host pattern: %s", req.Entries[0].Host),
+			Message: "one or more entries failed validation",
 			Details: details,
 		})
 		return
 	}
 
-	h.store.Set(sourceIP, entries)
+	rs := h.store.Set(sourceIP, entries)
 	h.logger.Info("rules updated", "operation", "set", "src_ip", sourceIP, "entry_count", len(entries))
 
-	rs, _ := h.store.Get(sourceIP)
 	respEntries := make([]EntryJSON, len(rs.Entries))
 	for i, e := range rs.Entries {
 		respEntries[i] = EntryJSON{Host: e.Host, Port: e.Port}
@@ -200,6 +213,15 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 //	@Router			/api/v1/rules/{sourceIP} [delete]
 func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) {
 	sourceIP := r.PathValue("sourceIP")
+
+	if net.ParseIP(sourceIP) == nil {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+			Error:   "invalid_request",
+			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
+		})
+		return
+	}
+
 	if !h.store.Delete(sourceIP) {
 		writeJSON(w, http.StatusNotFound, ErrorResponse{
 			Error:   "not_found",

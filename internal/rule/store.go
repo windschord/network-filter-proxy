@@ -36,15 +36,20 @@ func (s *Store) Get(sourceIP string) (*RuleSet, bool) {
 	return &RuleSet{Entries: entries, UpdatedAt: rs.UpdatedAt}, true
 }
 
-func (s *Store) Set(sourceIP string, entries []Entry) {
+func (s *Store) Set(sourceIP string, entries []Entry) *RuleSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	copied := make([]Entry, len(entries))
 	copy(copied, entries)
-	s.rules[sourceIP] = &RuleSet{
+	rs := &RuleSet{
 		Entries:   copied,
 		UpdatedAt: time.Now().UTC(),
 	}
+	s.rules[sourceIP] = rs
+	// Return a copy to avoid exposing internal state
+	retEntries := make([]Entry, len(copied))
+	copy(retEntries, copied)
+	return &RuleSet{Entries: retEntries, UpdatedAt: rs.UpdatedAt}
 }
 
 func (s *Store) Delete(sourceIP string) bool {

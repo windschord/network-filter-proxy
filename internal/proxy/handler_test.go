@@ -139,10 +139,14 @@ func TestProxyHandler_CONNECT_UnregisteredIP(t *testing.T) {
 	defer target.Close()
 
 	// No rules set -> should get 403 via CONNECT rejection
-	_, err := client.Get(target.URL)
-	// CONNECT rejection may manifest as a transport error
-	if err == nil {
-		t.Log("CONNECT rejection accepted as successful connection (proxy may have different behavior)")
+	resp, err := client.Get(target.URL)
+	if err != nil {
+		// CONNECT rejection manifests as a transport error - this is expected
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want %d or transport error", resp.StatusCode, http.StatusForbidden)
 	}
 }
 
@@ -208,9 +212,13 @@ func TestProxyHandler_CONNECT_DeniedHost(t *testing.T) {
 		},
 	}
 
-	_, err := client.Get(target.URL)
-	// CONNECT denial should cause an error or rejected response
-	if err == nil {
-		t.Log("CONNECT denied but no transport error (proxy behavior may vary)")
+	resp, err := client.Get(target.URL)
+	if err != nil {
+		// CONNECT denial manifests as a transport error - this is expected
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want %d or transport error", resp.StatusCode, http.StatusForbidden)
 	}
 }
