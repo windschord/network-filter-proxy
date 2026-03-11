@@ -1,0 +1,12 @@
+{
+  "name": "network-filter-proxy",
+  "private": true,
+  "scripts": {
+    "textlint": "textlint \"**/*.md\"",
+    "textlint:fix": "textlint --fix \"**/*.md\""
+  },
+  "devDependencies": {
+    "textlint": "15.5.2",
+    "textlint-rule-preset-ja-technical-writing": "12.0.2"
+  }
+}
