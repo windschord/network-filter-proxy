@@ -17,12 +17,17 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 │                 ▼  ▼                                   │
 │  [Filter Proxy Container]                              │
 │    :3128  - forward proxy (CONNECT 対応)               │
-│    127.0.0.1:8080  - management API (localhost only)   │
+│    :8080  - management API (管理専用ネットワークのみ)    │
 └────────┼───────────────────────────────────────────────┘
          │ (external network にも接続)
          ▼
      Internet (ホワイトリスト宛先のみ)
 ```
+
+**注**: Management API（:8080）は ClaudeWork（コントロールプレーン）からのアクセスを必要とする（US-004）。以下のいずれかの方式で外部到達不可かつ ClaudeWork からのみアクセス可能とすること:
+- ClaudeWork と Filter Proxy が同一ネットワーク名前空間で動作する場合は `127.0.0.1` バインド
+- 別コンテナの場合は管理専用ネットワーク（ClaudeWork のみ接続）のインターフェースにバインド
+- いずれの場合も external network への Management API ポート公開は禁止
 
 ## ユーザーストーリー一覧
 

@@ -75,11 +75,13 @@ sequenceDiagram
     OS->>Main: SIGTERM / SIGINT
     Main->>Main: context キャンセル（シグナル受信）
     Main->>Main: logger.Info("shutdown initiated")
+    Main->>Main: shutdownCtx作成（SHUTDOWN_TIMEOUT）
     par
         Main->>ProxyServer: Shutdown(ctx with SHUTDOWN_TIMEOUT)
     and
         Main->>APIServer: Shutdown(ctx with SHUTDOWN_TIMEOUT)
     end
+    Main->>ProxyHandler: CloseAllTunnels()
     Main->>Main: logger.Info("shutdown complete")
     Main->>OS: exit 0
 ```
@@ -134,6 +136,9 @@ filter-proxy/
 - [ ] 正常系: SIGTERM 受信後に両サーバーが正常終了する
 - [ ] 正常系: SHUTDOWN_TIMEOUT 秒以内に強制終了する
 - [ ] 正常系: 環境変数未設定時にデフォルト値が使用される
+- [ ] 正常系: シャットダウン時にアクティブな CONNECT トンネルが正常にクローズされる
+- [ ] 正常系: トンネル接続数のトラッキングが正確に動作する（trackConn/untrackConn）
+- [ ] 異常系: SHUTDOWN_TIMEOUT 内にトンネルクローズが完了する
 
 ## CONNECT トンネルのトラッキングとシャットダウン
 
@@ -154,6 +159,41 @@ type Handler struct {
     proxy      *goproxy.ProxyHttpServer
     mu         sync.Mutex
     tunnels    []net.Conn // アクティブなトンネル接続のリスト
+}
+
+// trackingConn はトンネル接続をラップし、Close 時に自動で登録解除する
+type trackingConn struct {
+    net.Conn
+    handler *Handler
+    once    sync.Once
+}
+
+func (tc *trackingConn) Close() error {
+    tc.once.Do(func() {
+        tc.handler.untrackConn(tc)
+    })
+    return tc.Conn.Close()
+}
+
+// trackConn はトンネル接続を登録する（CONNECT 成功時に呼び出す）
+func (h *Handler) trackConn(conn net.Conn) *trackingConn {
+    tc := &trackingConn{Conn: conn, handler: h}
+    h.mu.Lock()
+    h.tunnels = append(h.tunnels, tc)
+    h.mu.Unlock()
+    return tc
+}
+
+// untrackConn はトンネル接続を登録解除する（接続クローズ時に呼び出される）
+func (h *Handler) untrackConn(tc *trackingConn) {
+    h.mu.Lock()
+    defer h.mu.Unlock()
+    for i, c := range h.tunnels {
+        if c == tc {
+            h.tunnels = append(h.tunnels[:i], h.tunnels[i+1:]...)
+            break
+        }
+    }
 }
 
 // CloseAllTunnels はアクティブな全トンネル接続を強制クローズする
