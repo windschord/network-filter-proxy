@@ -6,7 +6,6 @@
 //	@host						127.0.0.1:8080
 //	@BasePath					/
 //	@license.name				MIT
-//	@securityDefinitions.basic	none
 package main
 
 import (

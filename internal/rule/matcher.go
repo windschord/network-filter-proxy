@@ -49,8 +49,13 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
+// NormalizeHost trims whitespace from host. Used by API handler to store normalized values.
+func NormalizeHost(host string) string {
+	return strings.TrimSpace(host)
+}
+
 func ValidateEntry(entry Entry) error {
-	host := strings.TrimSpace(entry.Host)
+	host := NormalizeHost(entry.Host)
 	if host == "" {
 		return &ValidationError{Field: "host", Message: "host is required"}
 	}
@@ -62,6 +67,10 @@ func ValidateEntry(entry Entry) error {
 	}
 	if strings.ContainsAny(host, " \t") {
 		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
+	}
+	// Reject host:port format (port is a separate field)
+	if _, _, err := net.SplitHostPort(host); err == nil {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: must not contain port: %s", host)}
 	}
 
 	if strings.Contains(host, "*") {

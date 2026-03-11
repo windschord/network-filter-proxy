@@ -142,12 +142,11 @@ func (h *Handler) handleGetRules(w http.ResponseWriter, r *http.Request) {
 //	@Failure		400			{object}	ErrorResponse
 //	@Router			/api/v1/rules/{sourceIP} [put]
 func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
-	sourceIP := r.PathValue("sourceIP")
-
-	if net.ParseIP(sourceIP) == nil {
+	sourceIP, ok := normalizeIP(r.PathValue("sourceIP"))
+	if !ok {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
-			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
+			Message: fmt.Sprintf("invalid source IP: %s", r.PathValue("sourceIP")),
 		})
 		return
 	}
@@ -164,7 +163,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	var details []ErrorDetail
 	entries := make([]rule.Entry, len(req.Entries))
 	for i, e := range req.Entries {
-		entry := rule.Entry{Host: e.Host, Port: e.Port}
+		entry := rule.Entry{Host: rule.NormalizeHost(e.Host), Port: e.Port}
 		if err := rule.ValidateEntry(entry); err != nil {
 			fieldName := "host"
 			var ve *rule.ValidationError
@@ -213,12 +212,11 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 //	@Failure		404			{object}	ErrorResponse
 //	@Router			/api/v1/rules/{sourceIP} [delete]
 func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) {
-	sourceIP := r.PathValue("sourceIP")
-
-	if net.ParseIP(sourceIP) == nil {
+	sourceIP, ok := normalizeIP(r.PathValue("sourceIP"))
+	if !ok {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
-			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
+			Message: fmt.Sprintf("invalid source IP: %s", r.PathValue("sourceIP")),
 		})
 		return
 	}
@@ -245,6 +243,19 @@ func (h *Handler) handleDeleteAllRules(w http.ResponseWriter, r *http.Request) {
 	h.store.DeleteAll()
 	h.logger.Info("all rules deleted", "operation", "delete_all")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// normalizeIP parses and normalizes an IP address string.
+// Returns the normalized IP string and true, or empty string and false if invalid.
+func normalizeIP(s string) (string, bool) {
+	ip := net.ParseIP(s)
+	if ip == nil {
+		return "", false
+	}
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String(), true
+	}
+	return ip.String(), true
 }
 
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {

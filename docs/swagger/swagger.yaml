@@ -178,7 +178,4 @@ paths:
       summary: Set rules for a source IP
       tags:
       - Rules
-securityDefinitions:
-  none:
-    type: basic
 swagger: "2.0"

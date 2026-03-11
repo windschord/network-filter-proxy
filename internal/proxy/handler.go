@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,7 +144,10 @@ func (tc *trackingConn) Close() error {
 }
 
 func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
-	host := req.URL.Host
+	host := req.Host
+	if host == "" && req.URL != nil {
+		host = req.URL.Host
+	}
 	remote, err := net.DialTimeout("tcp", host, 30*time.Second)
 	if err != nil {
 		h.logger.Error("tunnel dial failed", "host", host, "err", err)
@@ -223,13 +227,23 @@ func extractIP(remoteAddr string) string {
 	if err != nil {
 		return remoteAddr
 	}
-	return host
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return host
+	}
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String()
+	}
+	return ip.String()
 }
 
 func splitHostPort(hostport string, defaultPort int) (string, int) {
 	host, portStr, err := net.SplitHostPort(hostport)
 	if err != nil {
-		return hostport, defaultPort
+		// Strip IPv6 brackets if present (e.g. "[2001:db8::1]" -> "2001:db8::1")
+		h := strings.TrimPrefix(hostport, "[")
+		h = strings.TrimSuffix(h, "]")
+		return h, defaultPort
 	}
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
