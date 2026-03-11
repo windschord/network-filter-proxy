@@ -126,6 +126,22 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
 	return h
 }
 
+// trackingConn wraps net.Conn and decrements the active connection counter on Close.
+type trackingConn struct {
+	net.Conn
+	counter *atomic.Int64
+	once    sync.Once
+}
+
+func (tc *trackingConn) Close() error {
+	if tc.counter != nil {
+		tc.once.Do(func() {
+			tc.counter.Add(-1)
+		})
+	}
+	return tc.Conn.Close()
+}
+
 func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	host := req.URL.Host
 	remote, err := net.DialTimeout("tcp", host, 30*time.Second)
@@ -137,29 +153,30 @@ func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.Pr
 	}
 
 	h.activeConn.Add(1)
-	if !h.trackTunnel(client, remote) {
-		_ = remote.Close()
-		_ = client.Close()
-		h.activeConn.Add(-1)
+	tc := &trackingConn{Conn: client, counter: &h.activeConn}
+	tr := &trackingConn{Conn: remote, counter: nil}
+
+	if !h.trackTunnel(tc, tr) {
+		_ = tc.Close()
+		_ = tr.Close()
 		return
 	}
-	_, _ = fmt.Fprintf(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
+	_, _ = fmt.Fprintf(tc, "HTTP/1.1 200 Connection Established\r\n\r\n")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		_, _ = io.Copy(remote, client)
-		_ = remote.Close()
+		_, _ = io.Copy(tr, tc)
+		_ = tr.Close()
 	}()
 	go func() {
 		defer wg.Done()
-		_, _ = io.Copy(client, remote)
-		_ = client.Close()
+		_, _ = io.Copy(tc, tr)
+		_ = tc.Close()
 	}()
 	wg.Wait()
-	h.untrackTunnel(client, remote)
-	h.activeConn.Add(-1)
+	h.untrackTunnel(tc, tr)
 }
 
 func (h *Handler) trackTunnel(conns ...net.Conn) bool {

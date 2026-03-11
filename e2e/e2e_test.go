@@ -234,9 +234,15 @@ func TestE2E_ProxyCONNECT_AllowAndDeny(t *testing.T) {
 
 	// Register rule for CONNECT
 	body := fmt.Sprintf(`{"entries":[{"host":"%s","port":0}]}`, targetHost)
-	req, _ := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/127.0.0.1", bytes.NewBufferString(body))
+	req, err := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/127.0.0.1", bytes.NewBufferString(body))
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
-	apiResp, _ := http.DefaultClient.Do(req)
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("put rules failed: %v", err)
+	}
 	apiResp.Body.Close()
 
 	proxyURL, _ := url.Parse(env.proxyServer.URL)
@@ -295,14 +301,23 @@ func TestE2E_DeleteAllRules(t *testing.T) {
 	// Add rules
 	for _, ip := range []string{"10.0.0.1", "10.0.0.2", "10.0.0.3"} {
 		body := `{"entries":[{"host":"example.com","port":443}]}`
-		req, _ := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/"+ip, bytes.NewBufferString(body))
+		req, err := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/"+ip, bytes.NewBufferString(body))
+		if err != nil {
+			t.Fatalf("new request failed for %s: %v", ip, err)
+		}
 		req.Header.Set("Content-Type", "application/json")
-		resp, _ := http.DefaultClient.Do(req)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("put rules failed for %s: %v", ip, err)
+		}
 		resp.Body.Close()
 	}
 
 	// Verify 3 rules
-	resp, _ := http.Get(env.apiServer.URL + "/api/v1/health")
+	resp, err := http.Get(env.apiServer.URL + "/api/v1/health")
+	if err != nil {
+		t.Fatalf("health check failed: %v", err)
+	}
 	var health map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
 		t.Fatalf("failed to decode health response: %v", err)
@@ -313,15 +328,24 @@ func TestE2E_DeleteAllRules(t *testing.T) {
 	}
 
 	// Delete all
-	req, _ := http.NewRequest("DELETE", env.apiServer.URL+"/api/v1/rules", nil)
-	resp, _ = http.DefaultClient.Do(req)
+	req, err := http.NewRequest("DELETE", env.apiServer.URL+"/api/v1/rules", nil)
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("delete all failed: %v", err)
+	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("delete all: status = %d, want %d", resp.StatusCode, http.StatusNoContent)
 	}
 
 	// Verify 0 rules
-	resp, _ = http.Get(env.apiServer.URL + "/api/v1/health")
+	resp, err = http.Get(env.apiServer.URL + "/api/v1/health")
+	if err != nil {
+		t.Fatalf("health check failed: %v", err)
+	}
 	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
 		t.Fatalf("failed to decode health response: %v", err)
 	}
@@ -335,7 +359,10 @@ func TestE2E_ActiveConnections(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// Initially 0 active connections
-	resp, _ := http.Get(env.apiServer.URL + "/api/v1/health")
+	resp, err := http.Get(env.apiServer.URL + "/api/v1/health")
+	if err != nil {
+		t.Fatalf("health check failed: %v", err)
+	}
 	var health map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
 		t.Fatalf("failed to decode health response: %v", err)
@@ -360,9 +387,15 @@ func TestE2E_WildcardMatching(t *testing.T) {
 
 	// Register wildcard rule for *.0.0.1 (won't match 127.0.0.1, but test port 0 wildcard)
 	body := `{"entries":[{"host":"127.0.0.1","port":0}]}`
-	req, _ := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/127.0.0.1", bytes.NewBufferString(body))
+	req, err := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/127.0.0.1", bytes.NewBufferString(body))
+	if err != nil {
+		t.Fatalf("new request failed: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
-	apiResp, _ := http.DefaultClient.Do(req)
+	apiResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("put rules failed: %v", err)
+	}
 	apiResp.Body.Close()
 
 	proxyURL, _ := url.Parse(env.proxyServer.URL)
