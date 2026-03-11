@@ -186,7 +186,7 @@ go test -race ./internal/rule/...
 
 ### ステップ 4: コミット
 
-```
+```text
 feat: Implement RuleStore with thread-safe CRUD
 ```
 
