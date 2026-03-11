@@ -24,10 +24,10 @@
 
 | フェーズ | 完了 | 進行中 | 未着手 | ブロック | 詳細リンク |
 |---------|------|--------|--------|----------|-----------|
-| Phase 1: プロジェクト基盤 | 0 | 0 | 1 | 0 | [詳細](phase-1/) @phase-1/ |
-| Phase 2: コアロジック | 0 | 0 | 2 | 0 | [詳細](phase-2/) @phase-2/ |
-| Phase 3: サーバー実装 | 0 | 0 | 2 | 0 | [詳細](phase-3/) @phase-3/ |
-| Phase 4: 統合・Docker | 0 | 0 | 2 | 0 | [詳細](phase-4/) @phase-4/ |
+| Phase 1: プロジェクト基盤 | 1 | 0 | 0 | 0 | [詳細](phase-1/) @phase-1/ |
+| Phase 2: コアロジック | 2 | 0 | 0 | 0 | [詳細](phase-2/) @phase-2/ |
+| Phase 3: サーバー実装 | 2 | 0 | 0 | 0 | [詳細](phase-3/) @phase-3/ |
+| Phase 4: 統合・Docker | 2 | 0 | 0 | 0 | [詳細](phase-4/) @phase-4/ |
 
 ---
 
@@ -38,31 +38,31 @@
 
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
-| TASK-001 | プロジェクト基盤構築（go.mod / config / logger） | TODO | - | 20min | [詳細](phase-1/TASK-001.md) @phase-1/TASK-001.md |
+| TASK-001 | プロジェクト基盤構築（go.mod / config / logger） | DONE | - | 20min | [詳細](phase-1/TASK-001.md) @phase-1/TASK-001.md |
 
 ### Phase 2: コアロジック
 *推定期間: 30〜35分（AIエージェント作業時間・並列実行可能）*
 
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
-| TASK-002 | RuleStore 実装（メモリ内ルール CRUD） | TODO | TASK-001 | 25min | [詳細](phase-2/TASK-002.md) @phase-2/TASK-002.md |
-| TASK-003 | Matcher 実装（ホスト・ポートマッチング + バリデーション） | TODO | TASK-001 | 30min | [詳細](phase-2/TASK-003.md) @phase-2/TASK-003.md |
+| TASK-002 | RuleStore 実装（メモリ内ルール CRUD） | DONE | TASK-001 | 25min | [詳細](phase-2/TASK-002.md) @phase-2/TASK-002.md |
+| TASK-003 | Matcher 実装（ホスト・ポートマッチング + バリデーション） | DONE | TASK-001 | 30min | [詳細](phase-2/TASK-003.md) @phase-2/TASK-003.md |
 
 ### Phase 3: サーバー実装
 *推定期間: 45分（AIエージェント作業時間・並列実行可能）*
 
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
-| TASK-004 | ProxyHandler 実装（HTTP CONNECT フィルタリング） | TODO | TASK-002, TASK-003 | 40min | [詳細](phase-3/TASK-004.md) @phase-3/TASK-004.md |
-| TASK-005 | APIHandler 実装（Management REST API） | TODO | TASK-002, TASK-003 | 45min | [詳細](phase-3/TASK-005.md) @phase-3/TASK-005.md |
+| TASK-004 | ProxyHandler 実装（HTTP CONNECT フィルタリング） | DONE | TASK-002, TASK-003 | 40min | [詳細](phase-3/TASK-004.md) @phase-3/TASK-004.md |
+| TASK-005 | APIHandler 実装（Management REST API） | DONE | TASK-002, TASK-003 | 45min | [詳細](phase-3/TASK-005.md) @phase-3/TASK-005.md |
 
 ### Phase 4: 統合・Docker
 *推定期間: 35〜55分（AIエージェント作業時間）*
 
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
-| TASK-006 | main.go 統合（DI・Graceful Shutdown） | TODO | TASK-004, TASK-005 | 30min | [詳細](phase-4/TASK-006.md) @phase-4/TASK-006.md |
-| TASK-007 | Dockerfile・CI 設定 | TODO | TASK-006 | 25min | [詳細](phase-4/TASK-007.md) @phase-4/TASK-007.md |
+| TASK-006 | main.go 統合（DI・Graceful Shutdown） | DONE | TASK-004, TASK-005 | 30min | [詳細](phase-4/TASK-006.md) @phase-4/TASK-006.md |
+| TASK-007 | Dockerfile・CI 設定 | DONE | TASK-006 | 25min | [詳細](phase-4/TASK-007.md) @phase-4/TASK-007.md |
 
 ---
 

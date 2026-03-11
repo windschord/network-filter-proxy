@@ -197,7 +197,7 @@ feat: Implement main entry point with graceful shutdown
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-006 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 30分 |
 | **依存関係** | [TASK-004](../phase-3/TASK-004.md) @../phase-3/TASK-004.md, [TASK-005](../phase-3/TASK-005.md) @../phase-3/TASK-005.md |
 | **対応要件** | REQ-007-001〜005 |

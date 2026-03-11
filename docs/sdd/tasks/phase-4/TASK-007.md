@@ -166,7 +166,7 @@ feat: Add Dockerfile and GitHub Actions CI
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-007 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 25分 |
 | **依存関係** | [TASK-006](TASK-006.md) @TASK-006.md |
 | **対応要件** | NFR-MNT-001, NFR-MNT-002, NFR-MNT-003 |

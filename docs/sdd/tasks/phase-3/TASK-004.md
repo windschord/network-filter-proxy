@@ -317,7 +317,7 @@ feat: Implement ProxyHandler with whitelist filtering
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-004 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 40分 |
 | **依存関係** | [TASK-002](../phase-2/TASK-002.md) @../phase-2/TASK-002.md, [TASK-003](../phase-2/TASK-003.md) @../phase-2/TASK-003.md |
 | **対応要件** | REQ-001-001〜005, REQ-002-001〜010, REQ-003-001〜004 |
