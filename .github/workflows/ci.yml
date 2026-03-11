@@ -22,9 +22,9 @@ jobs:
           echo "Coverage: ${COVERAGE}%"
           awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@971cd0a9f32b42f9b5a6e2979416e0e2e1573a7f  # v6.5.1
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.64.8
+          version: v2.1.6
 
   build:
     runs-on: ubuntu-latest
