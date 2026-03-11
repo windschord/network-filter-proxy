@@ -21,6 +21,8 @@ jobs:
           COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
           echo "Coverage: ${COVERAGE}%"
           awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
+      - name: Run E2E tests
+        run: go test -race ./e2e/...
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
