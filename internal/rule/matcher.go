@@ -62,19 +62,8 @@ func ValidateEntry(entry Entry) error {
 	if entry.Port < 0 || entry.Port > 65535 {
 		return &ValidationError{Field: "port", Message: fmt.Sprintf("port must be between 0 and 65535, got %d", entry.Port)}
 	}
-	if strings.Contains(host, "://") {
-		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: scheme not allowed: %s", host)}
-	}
-	if strings.ContainsAny(host, " \t") {
-		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
-	}
-	// Reject host:port format (port is a separate field).
-	// Also reject bare colons in non-IP hosts (e.g. "example.com:").
-	if _, _, err := net.SplitHostPort(host); err == nil {
-		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: must not contain port: %s", host)}
-	}
-	if strings.Contains(host, ":") && net.ParseIP(host) == nil && !strings.Contains(host, "/") {
-		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: unexpected colon: %s", host)}
+	if err := rejectBadHostChars(host); err != nil {
+		return err
 	}
 
 	if strings.Contains(host, "*") {
@@ -105,6 +94,24 @@ func ValidateEntry(entry Entry) error {
 
 	if err := validateHostname(host); err != nil {
 		return &ValidationError{Field: "host", Message: err.Error()}
+	}
+	return nil
+}
+
+func rejectBadHostChars(host string) *ValidationError {
+	if strings.Contains(host, "://") {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: scheme not allowed: %s", host)}
+	}
+	if strings.ContainsAny(host, " \t") {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
+	}
+	// Reject host:port format (port is a separate field).
+	if _, _, err := net.SplitHostPort(host); err == nil {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: must not contain port: %s", host)}
+	}
+	// Reject bare colons in non-IP hosts (e.g. "example.com:").
+	if strings.Contains(host, ":") && net.ParseIP(host) == nil && !strings.Contains(host, "/") {
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: unexpected colon: %s", host)}
 	}
 	return nil
 }
