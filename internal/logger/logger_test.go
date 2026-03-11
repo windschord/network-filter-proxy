@@ -2,6 +2,7 @@ package logger_test
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -73,7 +74,7 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 		t.Errorf("expected no output for debug level when level defaults to info, got %q", buf.String())
 	}
 
-	log.Log(nil, slog.LevelInfo, "should appear")
+	log.Log(context.TODO(), slog.LevelInfo, "should appear")
 	if buf.Len() == 0 {
 		t.Error("expected output for info level")
 	}

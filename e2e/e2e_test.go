@@ -345,7 +345,7 @@ func TestE2E_WildcardMatching(t *testing.T) {
 	_, targetPortStr, _ := net.SplitHostPort(targetURL.Host)
 
 	// Register wildcard rule for *.0.0.1 (won't match 127.0.0.1, but test port 0 wildcard)
-	body := fmt.Sprintf(`{"entries":[{"host":"127.0.0.1","port":0}]}`)
+	body := `{"entries":[{"host":"127.0.0.1","port":0}]}`
 	req, _ := http.NewRequest("PUT", env.apiServer.URL+"/api/v1/rules/127.0.0.1", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	apiResp, _ := http.DefaultClient.Do(req)

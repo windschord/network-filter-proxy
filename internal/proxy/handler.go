@@ -123,30 +123,30 @@ func NewHandler(store *rule.Store, logger *slog.Logger) *Handler {
 	return h
 }
 
-func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, ctx *goproxy.ProxyCtx) {
+func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.ProxyCtx) {
 	host := req.URL.Host
 	remote, err := net.DialTimeout("tcp", host, 30*time.Second)
 	if err != nil {
 		h.logger.Error("tunnel dial failed", "host", host, "err", err)
-		fmt.Fprintf(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
-		client.Close()
+		_, _ = fmt.Fprintf(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
+		_ = client.Close()
 		return
 	}
 
 	h.activeConn.Add(1)
-	fmt.Fprintf(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
+	_, _ = fmt.Fprintf(client, "HTTP/1.1 200 Connection Established\r\n\r\n")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		io.Copy(remote, client)
-		remote.Close()
+		_, _ = io.Copy(remote, client)
+		_ = remote.Close()
 	}()
 	go func() {
 		defer wg.Done()
-		io.Copy(client, remote)
-		client.Close()
+		_, _ = io.Copy(client, remote)
+		_ = client.Close()
 	}()
 	wg.Wait()
 	h.activeConn.Add(-1)
