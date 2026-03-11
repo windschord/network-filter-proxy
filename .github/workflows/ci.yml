@@ -28,6 +28,11 @@ jobs:
         with:
           version: v2.1.6
           install-mode: goinstall
+      - name: Check OpenAPI spec is up-to-date
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+          swag init -g cmd/filter-proxy/main.go -o docs/swagger --outputTypes yaml
+          git diff --exit-code docs/swagger/swagger.yaml || (echo "FAIL: OpenAPI spec is out of date. Run 'make swagger' and commit." && exit 1)
 
   build:
     runs-on: ubuntu-latest
