@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"errors"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/claudework/network-filter-proxy/internal/proxy"
@@ -105,7 +105,7 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 		ActiveConnections: h.proxyHandler.ActiveConnections(),
 		RuleCount:         h.store.Count(),
 	}
-	writeJSON(w, http.StatusOK, resp)
+	h.writeJSON(w, http.StatusOK, resp)
 }
 
 // handleGetRules godoc
@@ -126,7 +126,7 @@ func (h *Handler) handleGetRules(w http.ResponseWriter, r *http.Request) {
 		}
 		result[ip] = RuleSetJSON{Entries: entries, UpdatedAt: rs.UpdatedAt}
 	}
-	writeJSON(w, http.StatusOK, RulesResponse{Rules: result})
+	h.writeJSON(w, http.StatusOK, RulesResponse{Rules: result})
 }
 
 // handlePutRules godoc
@@ -145,7 +145,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	sourceIP := r.PathValue("sourceIP")
 
 	if net.ParseIP(sourceIP) == nil {
-		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
 		})
@@ -154,7 +154,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 
 	var req PutRulesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: "failed to parse request body: " + err.Error(),
 		})
@@ -166,12 +166,13 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	for i, e := range req.Entries {
 		entry := rule.Entry{Host: e.Host, Port: e.Port}
 		if err := rule.ValidateEntry(entry); err != nil {
-			field := fmt.Sprintf("entries[%d].host", i)
-			if strings.Contains(err.Error(), "port") {
-				field = fmt.Sprintf("entries[%d].port", i)
+			fieldName := "host"
+			var ve *rule.ValidationError
+			if errors.As(err, &ve) {
+				fieldName = ve.Field
 			}
 			details = append(details, ErrorDetail{
-				Field:   field,
+				Field:   fmt.Sprintf("entries[%d].%s", i, fieldName),
 				Message: err.Error(),
 			})
 		}
@@ -179,7 +180,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(details) > 0 {
-		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "validation_error",
 			Message: "one or more entries failed validation",
 			Details: details,
@@ -194,7 +195,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	for i, e := range rs.Entries {
 		respEntries[i] = EntryJSON{Host: e.Host, Port: e.Port}
 	}
-	writeJSON(w, http.StatusOK, PutRulesResponse{
+	h.writeJSON(w, http.StatusOK, PutRulesResponse{
 		SourceIP:  sourceIP,
 		Entries:   respEntries,
 		UpdatedAt: rs.UpdatedAt,
@@ -215,7 +216,7 @@ func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) 
 	sourceIP := r.PathValue("sourceIP")
 
 	if net.ParseIP(sourceIP) == nil {
-		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: fmt.Sprintf("invalid source IP: %s", sourceIP),
 		})
@@ -223,7 +224,7 @@ func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !h.store.Delete(sourceIP) {
-		writeJSON(w, http.StatusNotFound, ErrorResponse{
+		h.writeJSON(w, http.StatusNotFound, ErrorResponse{
 			Error:   "not_found",
 			Message: fmt.Sprintf("no rules found for source IP: %s", sourceIP),
 		})
@@ -246,8 +247,10 @@ func (h *Handler) handleDeleteAllRules(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func writeJSON(w http.ResponseWriter, status int, v any) {
+func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		h.logger.Error("failed to write JSON response", "err", err)
+	}
 }

@@ -39,39 +39,49 @@ func Matches(entry Entry, host string, port int) bool {
 	return host == entryHost
 }
 
+// ValidationError provides structured validation error info.
+type ValidationError struct {
+	Field   string // "host" or "port"
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
 func ValidateEntry(entry Entry) error {
 	host := strings.TrimSpace(entry.Host)
 	if host == "" {
-		return fmt.Errorf("host is required")
+		return &ValidationError{Field: "host", Message: "host is required"}
 	}
 	if entry.Port < 0 || entry.Port > 65535 {
-		return fmt.Errorf("port must be between 0 and 65535, got %d", entry.Port)
+		return &ValidationError{Field: "port", Message: fmt.Sprintf("port must be between 0 and 65535, got %d", entry.Port)}
 	}
 	if strings.Contains(host, "://") {
-		return fmt.Errorf("invalid host: scheme not allowed: %s", host)
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: scheme not allowed: %s", host)}
 	}
 	if strings.ContainsAny(host, " \t") {
-		return fmt.Errorf("invalid host: contains whitespace: %s", host)
+		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
 	}
 
 	if strings.Contains(host, "*") {
 		wildcardCount := strings.Count(host, "*")
 		if wildcardCount > 1 || !strings.HasPrefix(host, "*.") {
-			return fmt.Errorf("invalid wildcard pattern: %s (only *.example.com form is allowed)", host)
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (only *.example.com form is allowed)", host)}
 		}
 		if len(host) <= 2 {
-			return fmt.Errorf("invalid wildcard pattern: %s (apex domain is empty)", host)
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (apex domain is empty)", host)}
 		}
 		apex := host[2:]
 		if err := validateHostname(apex); err != nil {
-			return fmt.Errorf("invalid wildcard apex %q: %w", apex, err)
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard apex %q: %s", apex, err)}
 		}
 		return nil
 	}
 
 	if strings.Contains(host, "/") {
 		if _, _, err := net.ParseCIDR(host); err != nil {
-			return fmt.Errorf("invalid CIDR: %s", host)
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid CIDR: %s", host)}
 		}
 		return nil
 	}
@@ -80,7 +90,10 @@ func ValidateEntry(entry Entry) error {
 		return nil
 	}
 
-	return validateHostname(host)
+	if err := validateHostname(host); err != nil {
+		return &ValidationError{Field: "host", Message: err.Error()}
+	}
+	return nil
 }
 
 func validateHostname(host string) error {
