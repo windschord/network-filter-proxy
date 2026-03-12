@@ -134,6 +134,7 @@ internal/
   rule/                 インメモリルールストア（sync.RWMutex）+ マッチャー
   proxy/                プロキシハンドラ（goproxy ラッパー、トンネル追跡）
   api/                  Management REST API ハンドラ
+docs/sdd/               システム設計ドキュメント（要件・設計・タスク）
 ```
 
 ### マッチングルール

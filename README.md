@@ -134,6 +134,7 @@ internal/
   rule/                 In-memory rule store (sync.RWMutex) + matcher
   proxy/                Proxy handler (goproxy wrapper, tunnel tracking)
   api/                  Management REST API handler
+docs/sdd/               System design documents (requirements, design, tasks)
 ```
 
 ### Matching Rules
