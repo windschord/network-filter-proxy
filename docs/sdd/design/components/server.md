@@ -252,16 +252,30 @@ func main() {
     os.Exit(run())
 }
 
-// runHealthcheck は 127.0.0.1:{API_PORT}/api/v1/health に GET リクエストを送り、
-// 200 なら 0、それ以外なら 1 を返す。
+// healthcheckAddr はヘルスチェック対象アドレスを解決する。
+// ワイルドカード(0.0.0.0, ::)とデフォルト(127.0.0.1)は 127.0.0.1 に解決し、
+// 特定アドレス(172.20.0.2, ::1 等)はそのまま使用する。
+func healthcheckAddr() string {
+    port := os.Getenv("API_PORT")
+    if port == "" {
+        port = "8080"
+    }
+    host := os.Getenv("API_BIND_ADDR")
+    switch host {
+    case "", "127.0.0.1", "0.0.0.0", "::":
+        host = "127.0.0.1"
+    }
+    return net.JoinHostPort(host, port)
+}
+
 func runHealthcheck() int {
-    port := getEnvOrDefault("API_PORT", "8080")
+    addr := healthcheckAddr()
     client := &http.Client{Timeout: 5 * time.Second}
-    resp, err := client.Get("http://127.0.0.1:" + port + "/api/v1/health")
+    resp, err := client.Get("http://" + addr + "/api/v1/health")
     if err != nil {
         return 1
     }
-    defer resp.Body.Close()
+    defer func() { _ = resp.Body.Close() }()
     if resp.StatusCode == http.StatusOK {
         return 0
     }
