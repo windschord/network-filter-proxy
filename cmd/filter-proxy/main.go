@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/claudework/network-filter-proxy/internal/api"
 	"github.com/claudework/network-filter-proxy/internal/config"
@@ -35,13 +36,14 @@ func run() int {
 	apiHandler := api.NewHandler(store, log, proxyHandler)
 
 	// Ports are configurable via environment variables (PROXY_PORT, API_PORT).
-	// API server always binds to 127.0.0.1 (loopback only) per security requirements.
+	// API bind address is configurable via API_BIND_ADDR (default: 127.0.0.1).
 	proxySrv := &http.Server{
 		Addr:    ":" + cfg.ProxyPort,
 		Handler: proxyHandler,
 	}
+	apiAddr := cfg.APIBindAddr + ":" + cfg.APIPort
 	apiSrv := &http.Server{
-		Addr:    "127.0.0.1:" + cfg.APIPort,
+		Addr:    apiAddr,
 		Handler: apiHandler.Routes(),
 	}
 
@@ -57,7 +59,7 @@ func run() int {
 		}
 	}()
 	go func() {
-		log.Info("api server starting", "addr", "127.0.0.1:"+cfg.APIPort)
+		log.Info("api server starting", "addr", apiAddr)
 		if err := apiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("api server error", "err", err)
 			errCh <- err
@@ -93,6 +95,26 @@ func run() int {
 	return exitCode
 }
 
+func runHealthcheck() int {
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/api/v1/health")
+	if err != nil {
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		return 0
+	}
+	return 1
+}
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(runHealthcheck())
+	}
 	os.Exit(run())
 }
