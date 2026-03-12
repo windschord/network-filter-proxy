@@ -29,7 +29,7 @@ docker build -t filter-proxy .
 docker run -d --name filter-proxy -p 3128:3128 filter-proxy
 ```
 
-> **注意:** Management API はコンテナ内で `127.0.0.1` にバインドされるため、ポートマッピングではホストから到達できません。API にアクセスするには `--network host` または `docker exec` を使用してください。
+> **注意:** Management API はコンテナ内で `127.0.0.1` にバインドされるため、ポートマッピングではホストから到達できません。Linux では `--network host` でホストのネットワークスタックを共有できます。macOS/Windows ではサイドカーコンテナを使用してください（下記参照）。
 
 ### ルール登録とテスト
 
@@ -45,13 +45,13 @@ curl -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
 curl -x http://127.0.0.1:3128 http://example.com
 ```
 
-Docker のデフォルトブリッジネットワークで実行している場合は `docker exec` を使用します:
+Docker 実行時は、ネットワーク名前空間を共有するサイドカーコンテナ経由で API を呼び出します（distroless イメージにはシェルや CLI ツールが含まれていません）:
 
 ```bash
-docker exec filter-proxy wget -q -O- --method=PUT \
-  --body-data='{"entries":[{"host":"example.com"}]}' \
-  --header='Content-Type: application/json' \
-  http://127.0.0.1:8080/api/v1/rules/10.0.0.5
+docker run --rm --network container:filter-proxy curlimages/curl \
+  -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
+  -H 'Content-Type: application/json' \
+  -d '{"entries":[{"host":"example.com"}]}'
 ```
 
 ## 設定

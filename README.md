@@ -29,7 +29,7 @@ docker build -t filter-proxy .
 docker run -d --name filter-proxy -p 3128:3128 filter-proxy
 ```
 
-> **Note:** The Management API binds to `127.0.0.1` inside the container and is not reachable from the host via port mapping. Use `--network host` or `docker exec` to call the API.
+> **Note:** The Management API binds to `127.0.0.1` inside the container and is not reachable from the host via port mapping. On Linux, use `--network host` to share the host network stack. On macOS/Windows, use a sidecar container (see below).
 
 ### Register a rule and test
 
@@ -45,13 +45,13 @@ curl -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
 curl -x http://127.0.0.1:3128 http://example.com
 ```
 
-When running in Docker with the default bridge network, use `docker exec`:
+When running in Docker, call the API via a sidecar container sharing the network namespace (the distroless image contains no shell or CLI tools):
 
 ```bash
-docker exec filter-proxy wget -q -O- --method=PUT \
-  --body-data='{"entries":[{"host":"example.com"}]}' \
-  --header='Content-Type: application/json' \
-  http://127.0.0.1:8080/api/v1/rules/10.0.0.5
+docker run --rm --network container:filter-proxy curlimages/curl \
+  -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
+  -H 'Content-Type: application/json' \
+  -d '{"entries":[{"host":"example.com"}]}'
 ```
 
 ## Configuration
