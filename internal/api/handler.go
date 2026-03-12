@@ -28,8 +28,9 @@ type EntryJSON struct {
 }
 
 // PutRulesRequest is the request body for PUT /api/v1/rules/{sourceIP}.
+// The entries field is required and validated in the handler.
 type PutRulesRequest struct {
-	Entries []EntryJSON `json:"entries" binding:"required"`
+	Entries []EntryJSON `json:"entries" validate:"required"`
 }
 
 // PutRulesResponse is the response body for PUT /api/v1/rules/{sourceIP}.

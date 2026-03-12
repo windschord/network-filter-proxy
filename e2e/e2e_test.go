@@ -219,7 +219,7 @@ func TestE2E_ProxyAllowAndDeny(t *testing.T) {
 	}
 }
 
-func TestE2E_ProxyCONNECT_AllowAndDeny(t *testing.T) {
+func TestE2E_ProxyCONNECT_Allow(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// TLS target server

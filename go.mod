@@ -1,6 +1,6 @@
 module github.com/claudework/network-filter-proxy
 
-go 1.26.1
+go 1.26
 
 require github.com/elazarl/goproxy v1.8.2
 

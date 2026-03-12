@@ -1,8 +1,11 @@
 package proxy_test
 
 import (
+	"bufio"
 	"crypto/tls"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -117,6 +120,27 @@ func TestProxyHandler_ActiveConn_Initial(t *testing.T) {
 	}
 }
 
+// sendCONNECT sends a raw CONNECT request to the proxy and returns the response.
+func sendCONNECT(t *testing.T, proxyAddr, targetHost string) *http.Response {
+	t.Helper()
+	conn, err := net.Dial("tcp", proxyAddr)
+	if err != nil {
+		t.Fatalf("dial proxy: %v", err)
+	}
+	defer conn.Close()
+
+	_, err = fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", targetHost, targetHost)
+	if err != nil {
+		t.Fatalf("write CONNECT: %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("read CONNECT response: %v", err)
+	}
+	return resp
+}
+
 // CONNECT tests via HTTPS proxy
 func TestProxyHandler_CONNECT_UnregisteredIP(t *testing.T) {
 	store := rule.NewStore()
@@ -126,27 +150,13 @@ func TestProxyHandler_CONNECT_UnregisteredIP(t *testing.T) {
 	defer proxyServer.Close()
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyURL(proxyURL),
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
 
-	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer target.Close()
-
-	// No rules set -> should get 403 via CONNECT rejection
-	resp, err := client.Get(target.URL)
-	if err != nil {
-		// CONNECT rejection manifests as a transport error - this is expected
-		return
-	}
+	// No rules set -> CONNECT should be rejected with 403
+	resp := sendCONNECT(t, proxyURL.Host, "example.com:443")
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("status = %d, want %d or transport error", resp.StatusCode, http.StatusForbidden)
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
 
@@ -196,29 +206,16 @@ func TestProxyHandler_CONNECT_DeniedHost(t *testing.T) {
 	proxyServer := httptest.NewServer(h)
 	defer proxyServer.Close()
 
-	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer target.Close()
-
 	// Set rules for a different host
 	store.Set("127.0.0.1", []rule.Entry{{Host: "other.example.com", Port: 443}})
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
-	client := &http.Client{
-		Transport: &http.Transport{
-			Proxy:           http.ProxyURL(proxyURL),
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
 
-	resp, err := client.Get(target.URL)
-	if err != nil {
-		// CONNECT denial manifests as a transport error - this is expected
-		return
-	}
+	// CONNECT to a host not in rules -> should be rejected with 403
+	resp := sendCONNECT(t, proxyURL.Host, "blocked.example.com:443")
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusForbidden {
-		t.Errorf("status = %d, want %d or transport error", resp.StatusCode, http.StatusForbidden)
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
