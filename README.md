@@ -26,12 +26,14 @@ go build -o filter-proxy ./cmd/filter-proxy
 
 ```bash
 docker build -t filter-proxy .
-docker run -p 3128:3128 filter-proxy
+docker run -d --name filter-proxy -p 3128:3128 filter-proxy
 ```
 
-> **Note:** The Management API binds to `127.0.0.1` inside the container. To access it from the host, use `--network host` or a sidecar pattern.
+> **Note:** The Management API binds to `127.0.0.1` inside the container and is not reachable from the host via port mapping. Use `--network host` or `docker exec` to call the API.
 
 ### Register a rule and test
+
+When running as a binary, call the API directly:
 
 ```bash
 # Allow 10.0.0.5 to access example.com on any port
@@ -41,6 +43,14 @@ curl -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
 
 # Proxy a request through the filter
 curl -x http://127.0.0.1:3128 http://example.com
+```
+
+When running in Docker with the default bridge network, use `docker exec`:
+
+```bash
+docker exec filter-proxy wget -q -O- --post-data='{"entries":[{"host":"example.com"}]}' \
+  --header='Content-Type: application/json' \
+  http://127.0.0.1:8080/api/v1/rules/10.0.0.5
 ```
 
 ## Configuration

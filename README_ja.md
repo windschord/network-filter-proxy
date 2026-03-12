@@ -26,12 +26,14 @@ go build -o filter-proxy ./cmd/filter-proxy
 
 ```bash
 docker build -t filter-proxy .
-docker run -p 3128:3128 filter-proxy
+docker run -d --name filter-proxy -p 3128:3128 filter-proxy
 ```
 
-> **注意:** Management API はコンテナ内で `127.0.0.1` にバインドされます。ホストからアクセスするには `--network host` またはサイドカーパターンを使用してください。
+> **注意:** Management API はコンテナ内で `127.0.0.1` にバインドされるため、ポートマッピングではホストから到達できません。API にアクセスするには `--network host` または `docker exec` を使用してください。
 
 ### ルール登録とテスト
+
+バイナリ実行時は API を直接呼び出します:
 
 ```bash
 # 10.0.0.5 から example.com への全ポートアクセスを許可
@@ -41,6 +43,14 @@ curl -X PUT http://127.0.0.1:8080/api/v1/rules/10.0.0.5 \
 
 # フィルタプロキシ経由でリクエスト
 curl -x http://127.0.0.1:3128 http://example.com
+```
+
+Docker のデフォルトブリッジネットワークで実行している場合は `docker exec` を使用します:
+
+```bash
+docker exec filter-proxy wget -q -O- --post-data='{"entries":[{"host":"example.com"}]}' \
+  --header='Content-Type: application/json' \
+  http://127.0.0.1:8080/api/v1/rules/10.0.0.5
 ```
 
 ## 設定
