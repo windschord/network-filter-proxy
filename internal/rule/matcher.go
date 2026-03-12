@@ -106,7 +106,7 @@ func rejectBadHostChars(host string) *ValidationError {
 	if strings.Contains(host, "://") {
 		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: scheme not allowed: %s", host)}
 	}
-	if strings.ContainsAny(host, " \t") {
+	if strings.ContainsAny(host, " \t\n\r") {
 		return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid host: contains whitespace: %s", host)}
 	}
 	// Reject host:port format (port is a separate field).
