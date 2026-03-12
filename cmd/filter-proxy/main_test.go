@@ -31,6 +31,47 @@ func extractPort(t *testing.T, srv *httptest.Server) string {
 	return port
 }
 
+// --- Address resolution tests (no network I/O) ---
+
+func TestHealthcheckAddr_Default(t *testing.T) {
+	t.Setenv("API_PORT", "")
+
+	addr := healthcheckAddr()
+	if addr != "127.0.0.1:8080" {
+		t.Errorf("healthcheckAddr() = %q, want %q", addr, "127.0.0.1:8080")
+	}
+}
+
+func TestHealthcheckAddr_CustomPort(t *testing.T) {
+	t.Setenv("API_PORT", "9090")
+
+	addr := healthcheckAddr()
+	if addr != "127.0.0.1:9090" {
+		t.Errorf("healthcheckAddr() = %q, want %q", addr, "127.0.0.1:9090")
+	}
+}
+
+func TestHealthcheckAddr_IgnoresBindAddr(t *testing.T) {
+	// healthcheckAddr always returns 127.0.0.1 regardless of API_BIND_ADDR.
+	for _, bindAddr := range []string{"0.0.0.0", "::", "172.20.0.2", "::1"} {
+		t.Run(bindAddr, func(t *testing.T) {
+			t.Setenv("API_BIND_ADDR", bindAddr)
+			t.Setenv("API_PORT", "8080")
+
+			addr := healthcheckAddr()
+			host, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				t.Fatalf("failed to parse addr %q: %v", addr, err)
+			}
+			if host != "127.0.0.1" {
+				t.Errorf("healthcheckAddr() host = %q, want %q", host, "127.0.0.1")
+			}
+		})
+	}
+}
+
+// --- Integration tests (with real server) ---
+
 func TestRunHealthcheck_Success(t *testing.T) {
 	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/health" {
@@ -50,24 +91,6 @@ func TestRunHealthcheck_Success(t *testing.T) {
 	}
 }
 
-func TestRunHealthcheck_ServerDown(t *testing.T) {
-	// Acquire and immediately release a port to ensure nothing is listening.
-	listener, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	port := extractPort(t, &httptest.Server{Listener: listener})
-	listener.Close()
-
-	t.Setenv("API_PORT", port)
-	t.Setenv("API_BIND_ADDR", "")
-
-	code := runHealthcheck()
-	if code != 1 {
-		t.Errorf("runHealthcheck() = %d, want 1", code)
-	}
-}
-
 func TestRunHealthcheck_Non200(t *testing.T) {
 	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -83,44 +106,18 @@ func TestRunHealthcheck_Non200(t *testing.T) {
 	}
 }
 
-func TestRunHealthcheck_DefaultPort(t *testing.T) {
-	// We leave API_PORT empty so the default value (8080) is used. Since we do not
-	// start any server on port 8080, the healthcheck should fail to connect.
-	t.Setenv("API_PORT", "")
+func TestRunHealthcheck_ServerDown(t *testing.T) {
+	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	port := extractPort(t, srv)
+	srv.Close() // close immediately so nothing is listening
+
+	t.Setenv("API_PORT", port)
 	t.Setenv("API_BIND_ADDR", "")
 
 	code := runHealthcheck()
 	if code != 1 {
-		t.Errorf("runHealthcheck() = %d, want 1 (no server on default port 8080)", code)
-	}
-}
-
-func TestRunHealthcheck_WildcardBindAddr(t *testing.T) {
-	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	t.Setenv("API_PORT", extractPort(t, srv))
-	t.Setenv("API_BIND_ADDR", "0.0.0.0")
-
-	code := runHealthcheck()
-	if code != 0 {
-		t.Errorf("runHealthcheck() = %d, want 0 (0.0.0.0 should still check 127.0.0.1)", code)
-	}
-}
-
-func TestRunHealthcheck_IPv6WildcardBindAddr(t *testing.T) {
-	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	t.Setenv("API_PORT", extractPort(t, srv))
-	t.Setenv("API_BIND_ADDR", "::")
-
-	code := runHealthcheck()
-	if code != 0 {
-		t.Errorf("runHealthcheck() = %d, want 0 (:: should still check 127.0.0.1)", code)
+		t.Errorf("runHealthcheck() = %d, want 1", code)
 	}
 }

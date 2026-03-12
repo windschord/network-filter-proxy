@@ -100,16 +100,21 @@ func run() int {
 	return exitCode
 }
 
-// runHealthcheck always connects to 127.0.0.1 per US-009/REQ-009-002.
-// When API_BIND_ADDR is 0.0.0.0, the server listens on all interfaces
-// including loopback, so 127.0.0.1 is always reachable.
-// Reads API_PORT directly from env to stay lightweight and independent of config.Load().
-func runHealthcheck() int {
+// healthcheckAddr resolves the target address for the healthcheck probe.
+// Always uses 127.0.0.1 per US-009/REQ-009-002; reads API_PORT from env.
+func healthcheckAddr() string {
 	port := os.Getenv("API_PORT")
 	if port == "" {
 		port = "8080"
 	}
-	addr := net.JoinHostPort("127.0.0.1", port)
+	return net.JoinHostPort("127.0.0.1", port)
+}
+
+// runHealthcheck always connects to 127.0.0.1 per US-009/REQ-009-002.
+// When API_BIND_ADDR is 0.0.0.0, the server listens on all interfaces
+// including loopback, so 127.0.0.1 is always reachable.
+func runHealthcheck() int {
+	addr := healthcheckAddr()
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get("http://" + addr + "/api/v1/health")
 	if err != nil {
