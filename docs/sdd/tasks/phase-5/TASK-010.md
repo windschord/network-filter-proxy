@@ -77,4 +77,4 @@ TASK-009（healthcheck サブコマンドが実装済みであること）
 
 ## ステータス
 
-`TODO`
+`DONE`

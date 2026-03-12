@@ -177,4 +177,4 @@ TASK-008（Config の APIBindAddr フィールドが必要）
 
 ## ステータス
 
-`TODO`
+`DONE`

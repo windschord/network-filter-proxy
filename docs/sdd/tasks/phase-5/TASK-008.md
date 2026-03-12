@@ -110,4 +110,4 @@ go test -race ./internal/config/...
 
 ## ステータス
 
-`TODO`
+`DONE`

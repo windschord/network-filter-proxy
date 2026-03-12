@@ -28,7 +28,7 @@
 | Phase 2: コアロジック | 2 | 0 | 0 | 0 | [詳細](phase-2/) @phase-2/ |
 | Phase 3: サーバー実装 | 2 | 0 | 0 | 0 | [詳細](phase-3/) @phase-3/ |
 | Phase 4: 統合・Docker | 2 | 0 | 0 | 0 | [詳細](phase-4/) @phase-4/ |
-| Phase 5: API_BIND_ADDR・ヘルスチェック | 0 | 0 | 3 | 0 | [詳細](phase-5/) @phase-5/ |
+| Phase 5: API_BIND_ADDR・ヘルスチェック | 3 | 0 | 0 | 0 | [詳細](phase-5/) @phase-5/ |
 
 ---
 
@@ -70,9 +70,9 @@
 
 | タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
 |----------|---------|-----------|------|------|-----------|
-| TASK-008 | Config に API_BIND_ADDR を追加（バリデーション付き） | TODO | - | 15min | [詳細](phase-5/TASK-008.md) @phase-5/TASK-008.md |
-| TASK-009 | healthcheck サブコマンド + API バインドアドレス適用 | TODO | TASK-008 | 25min | [詳細](phase-5/TASK-009.md) @phase-5/TASK-009.md |
-| TASK-010 | Dockerfile HEALTHCHECK + ドキュメント更新 | TODO | TASK-009 | 10min | [詳細](phase-5/TASK-010.md) @phase-5/TASK-010.md |
+| TASK-008 | Config に API_BIND_ADDR を追加（バリデーション付き） | DONE | - | 15min | [詳細](phase-5/TASK-008.md) @phase-5/TASK-008.md |
+| TASK-009 | healthcheck サブコマンド + API バインドアドレス適用 | DONE | TASK-008 | 25min | [詳細](phase-5/TASK-009.md) @phase-5/TASK-009.md |
+| TASK-010 | Dockerfile HEALTHCHECK + ドキュメント更新 | DONE | TASK-009 | 10min | [詳細](phase-5/TASK-010.md) @phase-5/TASK-010.md |
 
 ---
 
