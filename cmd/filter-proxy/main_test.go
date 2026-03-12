@@ -84,22 +84,14 @@ func TestRunHealthcheck_Non200(t *testing.T) {
 }
 
 func TestRunHealthcheck_DefaultPort(t *testing.T) {
-	// Verify that config.Load() resolves API_PORT to "8080" by default.
-	// We start a server on a known port and set API_PORT="" to confirm
-	// the default value is used (connection will fail since no server on 8080).
-	srv := newIPv4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	// Use the test server's port to verify healthcheck works,
-	// then confirm default port value via config.
-	t.Setenv("API_PORT", extractPort(t, srv))
+	// We leave API_PORT empty so the default value (8080) is used. Since we do not
+	// start any server on port 8080, the healthcheck should fail to connect.
+	t.Setenv("API_PORT", "")
 	t.Setenv("API_BIND_ADDR", "")
 
 	code := runHealthcheck()
-	if code != 0 {
-		t.Errorf("runHealthcheck() = %d, want 0", code)
+	if code != 1 {
+		t.Errorf("runHealthcheck() = %d, want 1 (no server on default port 8080)", code)
 	}
 }
 
