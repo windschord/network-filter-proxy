@@ -1,5 +1,9 @@
 version: "2"
 
+run:
+  go: "1.26"
+  timeout: 5m
+
 linters:
   enable:
     - govet
@@ -14,6 +18,3 @@ linters:
       - linters:
           - errcheck
         path: _test\.go
-
-run:
-  timeout: 5m

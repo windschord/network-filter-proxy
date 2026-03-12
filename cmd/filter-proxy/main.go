@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,6 +32,10 @@ func run() int {
 	cfg := config.Load()
 	log := logger.New(cfg.LogFormat, cfg.LogLevel)
 
+	if cfg.APIBindAddrFallback {
+		log.Error("invalid API_BIND_ADDR, falling back to 127.0.0.1", "configured", os.Getenv("API_BIND_ADDR"))
+	}
+
 	store := rule.NewStore()
 	proxyHandler := proxy.NewHandler(store, log)
 	apiHandler := api.NewHandler(store, log, proxyHandler)
@@ -41,7 +46,7 @@ func run() int {
 		Addr:    ":" + cfg.ProxyPort,
 		Handler: proxyHandler,
 	}
-	apiAddr := cfg.APIBindAddr + ":" + cfg.APIPort
+	apiAddr := net.JoinHostPort(cfg.APIBindAddr, cfg.APIPort)
 	apiSrv := &http.Server{
 		Addr:    apiAddr,
 		Handler: apiHandler.Routes(),
@@ -100,12 +105,17 @@ func runHealthcheck() int {
 	if port == "" {
 		port = "8080"
 	}
+	host := os.Getenv("API_BIND_ADDR")
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	addr := net.JoinHostPort(host, port)
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://127.0.0.1:" + port + "/api/v1/health")
+	resp, err := client.Get("http://" + addr + "/api/v1/health")
 	if err != nil {
 		return 1
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusOK {
 		return 0
 	}

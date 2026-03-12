@@ -28,6 +28,7 @@ func TestRunHealthcheck_Success(t *testing.T) {
 	defer srv.Close()
 
 	t.Setenv("API_PORT", extractPort(t, srv))
+	t.Setenv("API_BIND_ADDR", "")
 
 	code := runHealthcheck()
 	if code != 0 {
@@ -36,15 +37,15 @@ func TestRunHealthcheck_Success(t *testing.T) {
 }
 
 func TestRunHealthcheck_ServerDown(t *testing.T) {
-	// Use a port that's unlikely to be in use
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	port := strconv.Itoa(listener.Addr().(*net.TCPAddr).Port)
-	listener.Close() // Close immediately so the port is free but nothing is listening
+	listener.Close()
 
 	t.Setenv("API_PORT", port)
+	t.Setenv("API_BIND_ADDR", "")
 
 	code := runHealthcheck()
 	if code != 1 {
@@ -59,6 +60,7 @@ func TestRunHealthcheck_Non200(t *testing.T) {
 	defer srv.Close()
 
 	t.Setenv("API_PORT", extractPort(t, srv))
+	t.Setenv("API_BIND_ADDR", "")
 
 	code := runHealthcheck()
 	if code != 1 {
@@ -68,10 +70,25 @@ func TestRunHealthcheck_Non200(t *testing.T) {
 
 func TestRunHealthcheck_DefaultPort(t *testing.T) {
 	t.Setenv("API_PORT", "")
+	t.Setenv("API_BIND_ADDR", "")
 
-	// This will fail to connect (nothing on 8080 in test) but should not panic
 	code := runHealthcheck()
 	if code != 1 {
 		t.Errorf("runHealthcheck() = %d, want 1 (default port, no server)", code)
+	}
+}
+
+func TestRunHealthcheck_WildcardBindAddr(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	t.Setenv("API_PORT", extractPort(t, srv))
+	t.Setenv("API_BIND_ADDR", "0.0.0.0")
+
+	code := runHealthcheck()
+	if code != 0 {
+		t.Errorf("runHealthcheck() = %d, want 0 (0.0.0.0 should resolve to 127.0.0.1)", code)
 	}
 }

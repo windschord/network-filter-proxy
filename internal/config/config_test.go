@@ -119,6 +119,18 @@ func TestLoad_APIBindAddr_InvalidString(t *testing.T) {
 	if cfg.APIBindAddr != "127.0.0.1" {
 		t.Errorf("APIBindAddr = %q, want %q (fallback)", cfg.APIBindAddr, "127.0.0.1")
 	}
+	if !cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = false, want true")
+	}
+}
+
+func TestLoad_APIBindAddr_ValidNoFallback(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "0.0.0.0")
+
+	cfg := config.Load()
+	if cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = true, want false")
+	}
 }
 
 func TestLoad_APIBindAddr_InvalidIP(t *testing.T) {
