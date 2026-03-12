@@ -147,11 +147,10 @@ func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.Pr
 	if host == "" && req.URL != nil {
 		host = req.URL.Host
 	}
-	// Ensure host includes a port for DialTimeout
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		host = net.JoinHostPort(host, "443")
-	}
-	remote, err := net.DialTimeout("tcp", host, 30*time.Second)
+	// Parse and reconstruct with numeric port to prevent service-name resolution bypass.
+	dstHost, dstPort := splitHostPort(host, 443)
+	target := net.JoinHostPort(dstHost, strconv.Itoa(dstPort))
+	remote, err := net.DialTimeout("tcp", target, 30*time.Second)
 	if err != nil {
 		h.logger.Error("tunnel dial failed", "host", host, "err", err)
 		_, _ = fmt.Fprintf(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")

@@ -83,6 +83,9 @@ func ValidateEntry(entry Entry) error {
 			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (apex domain is empty)", host)}
 		}
 		apex := host[2:]
+		if !strings.Contains(apex, ".") {
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (apex must be a multi-level domain, not a TLD)", host)}
+		}
 		if err := validateHostname(apex); err != nil {
 			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard apex %q: %s", apex, err)}
 		}

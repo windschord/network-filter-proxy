@@ -10,6 +10,7 @@ import (
 func TestLoad_Defaults(t *testing.T) {
 	t.Setenv("PROXY_PORT", "")
 	t.Setenv("API_PORT", "")
+	t.Setenv("API_BIND_ADDR", "")
 	t.Setenv("LOG_LEVEL", "")
 	t.Setenv("LOG_FORMAT", "")
 	t.Setenv("SHUTDOWN_TIMEOUT", "")

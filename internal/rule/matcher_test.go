@@ -239,3 +239,20 @@ func TestValidateEntry_LabelExceeds63Chars(t *testing.T) {
 		t.Error("expected error for label exceeding 63 chars, got nil")
 	}
 }
+
+func TestValidateEntry_WildcardTLD(t *testing.T) {
+	for _, host := range []string{"*.com", "*.local", "*.net"} {
+		err := rule.ValidateEntry(rule.Entry{Host: host})
+		if err == nil {
+			t.Errorf("expected error for TLD wildcard %q, got nil", host)
+		}
+	}
+}
+
+func TestValidateEntry_WildcardMultiLevel(t *testing.T) {
+	// *.example.com should be valid (multi-level apex)
+	err := rule.ValidateEntry(rule.Entry{Host: "*.example.com"})
+	if err != nil {
+		t.Errorf("unexpected error for valid wildcard: %v", err)
+	}
+}
