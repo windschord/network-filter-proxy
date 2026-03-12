@@ -150,3 +150,39 @@ func TestLoad_APIBindAddr_IPv6(t *testing.T) {
 		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "::1")
 	}
 }
+
+func TestLoad_LogLevel_InvalidFallback(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "verbose")
+
+	cfg := config.Load()
+	if cfg.LogLevel != "info" {
+		t.Errorf("LogLevel = %q, want %q (fallback)", cfg.LogLevel, "info")
+	}
+}
+
+func TestLoad_LogLevel_CaseInsensitive(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "DEBUG")
+
+	cfg := config.Load()
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}
+
+func TestLoad_LogFormat_InvalidFallback(t *testing.T) {
+	t.Setenv("LOG_FORMAT", "yaml")
+
+	cfg := config.Load()
+	if cfg.LogFormat != "json" {
+		t.Errorf("LogFormat = %q, want %q (fallback)", cfg.LogFormat, "json")
+	}
+}
+
+func TestLoad_LogFormat_CaseInsensitive(t *testing.T) {
+	t.Setenv("LOG_FORMAT", "TEXT")
+
+	cfg := config.Load()
+	if cfg.LogFormat != "text" {
+		t.Errorf("LogFormat = %q, want %q", cfg.LogFormat, "text")
+	}
+}

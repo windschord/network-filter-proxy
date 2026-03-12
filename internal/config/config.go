@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -29,14 +30,26 @@ func Load() Config {
 		apiBindAddr = "127.0.0.1"
 		apiBindAddrFallback = true
 	}
+	logLevel := strings.ToLower(getEnv("LOG_LEVEL", "info"))
+	switch logLevel {
+	case "debug", "info", "warn", "error":
+	default:
+		logLevel = "info"
+	}
+	logFormat := strings.ToLower(getEnv("LOG_FORMAT", "json"))
+	switch logFormat {
+	case "json", "text":
+	default:
+		logFormat = "json"
+	}
 	return Config{
 		ProxyPort:           getEnv("PROXY_PORT", "3128"),
 		APIPort:             getEnv("API_PORT", "8080"),
 		APIBindAddr:         apiBindAddr,
 		APIBindAddrFallback: apiBindAddrFallback,
-		LogLevel:        getEnv("LOG_LEVEL", "info"),
-		LogFormat:       getEnv("LOG_FORMAT", "json"),
-		ShutdownTimeout: time.Duration(timeout) * time.Second,
+		LogLevel:            logLevel,
+		LogFormat:           logFormat,
+		ShutdownTimeout:     time.Duration(timeout) * time.Second,
 	}
 }
 

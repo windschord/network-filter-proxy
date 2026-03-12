@@ -101,15 +101,12 @@ func run() int {
 }
 
 func runHealthcheck() int {
-	port := os.Getenv("API_PORT")
-	if port == "" {
-		port = "8080"
-	}
-	host := os.Getenv("API_BIND_ADDR")
-	if host == "" || host == "0.0.0.0" || host == "::" {
+	cfg := config.Load()
+	host := cfg.APIBindAddr
+	if host == "0.0.0.0" || host == "::" {
 		host = "127.0.0.1"
 	}
-	addr := net.JoinHostPort(host, port)
+	addr := net.JoinHostPort(host, cfg.APIPort)
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get("http://" + addr + "/api/v1/health")
 	if err != nil {
