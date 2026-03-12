@@ -26,7 +26,7 @@ go build -o filter-proxy ./cmd/filter-proxy
 
 ```bash
 docker build -t filter-proxy .
-docker run -p 3128:3128 -p 8080:8080 filter-proxy
+docker run -p 3128:3128 filter-proxy
 ```
 
 > **注意:** Management API はコンテナ内で `127.0.0.1` にバインドされます。ホストからアクセスするには `--network host` またはサイドカーパターンを使用してください。
@@ -63,7 +63,7 @@ OpenAPI 仕様書: [`docs/swagger/swagger.yaml`](docs/swagger/swagger.yaml)
 
 ### ヘルスチェック
 
-```
+```http
 GET /api/v1/health
 ```
 
@@ -78,13 +78,13 @@ GET /api/v1/health
 
 ### 全ルール一覧
 
-```
+```http
 GET /api/v1/rules
 ```
 
 ### 送信元 IP のルール設定
 
-```
+```http
 PUT /api/v1/rules/{sourceIP}
 ```
 
@@ -103,19 +103,19 @@ PUT /api/v1/rules/{sourceIP}
 
 ### 送信元 IP のルール削除
 
-```
+```http
 DELETE /api/v1/rules/{sourceIP}
 ```
 
 ### 全ルール削除
 
-```
+```http
 DELETE /api/v1/rules
 ```
 
 ## アーキテクチャ
 
-```
+```plaintext
 cmd/filter-proxy/       エントリポイント
 internal/
   config/               環境変数の読み込み
@@ -151,8 +151,8 @@ internal/
 ### テスト実行
 
 ```bash
-# ユニットテスト + 結合テスト
-go test -race ./...
+# ユニットテスト + 結合テスト（E2E を除く）
+go test -race $(go list ./... | grep -v /e2e/)
 
 # E2E テストのみ
 go test -race ./e2e/...

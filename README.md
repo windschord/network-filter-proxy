@@ -26,7 +26,7 @@ go build -o filter-proxy ./cmd/filter-proxy
 
 ```bash
 docker build -t filter-proxy .
-docker run -p 3128:3128 -p 8080:8080 filter-proxy
+docker run -p 3128:3128 filter-proxy
 ```
 
 > **Note:** The Management API binds to `127.0.0.1` inside the container. To access it from the host, use `--network host` or a sidecar pattern.
@@ -63,7 +63,7 @@ Full OpenAPI spec: [`docs/swagger/swagger.yaml`](docs/swagger/swagger.yaml)
 
 ### Health Check
 
-```
+```http
 GET /api/v1/health
 ```
 
@@ -78,13 +78,13 @@ GET /api/v1/health
 
 ### List All Rules
 
-```
+```http
 GET /api/v1/rules
 ```
 
 ### Set Rules for a Source IP
 
-```
+```http
 PUT /api/v1/rules/{sourceIP}
 ```
 
@@ -103,19 +103,19 @@ PUT /api/v1/rules/{sourceIP}
 
 ### Delete Rules for a Source IP
 
-```
+```http
 DELETE /api/v1/rules/{sourceIP}
 ```
 
 ### Delete All Rules
 
-```
+```http
 DELETE /api/v1/rules
 ```
 
 ## Architecture
 
-```
+```plaintext
 cmd/filter-proxy/       Entry point
 internal/
   config/               Environment variable loading
@@ -151,8 +151,8 @@ internal/
 ### Run tests
 
 ```bash
-# Unit + integration tests
-go test -race ./...
+# Unit + integration tests (excluding E2E)
+go test -race $(go list ./... | grep -v /e2e/)
 
 # E2E tests only
 go test -race ./e2e/...
