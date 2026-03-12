@@ -53,9 +53,13 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-// NormalizeHost trims whitespace from host. Used by API handler to store normalized values.
+// NormalizeHost normalizes a host string by trimming whitespace, removing
+// trailing dots (FQDN), and converting to lowercase. Used by API handler
+// to store normalized values consistent with Matches() normalization.
 func NormalizeHost(host string) string {
-	return strings.TrimSpace(host)
+	host = strings.TrimSpace(host)
+	host = strings.TrimSuffix(host, ".")
+	return strings.ToLower(host)
 }
 
 func ValidateEntry(entry Entry) error {

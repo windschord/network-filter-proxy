@@ -207,20 +207,30 @@ func (h *Handler) untrackTunnel(conns ...net.Conn) {
 }
 
 // CloseAllTunnels closes all tracked tunnel connections.
-// Aligns with the documented server shutdown flow (ProxyHandler.CloseAllTunnels()).
+// CloseAllTunnels closes all currently tracked tunnel connections without
+// preventing new ones from being accepted. Called during graceful shutdown
+// after Server.Shutdown() has already stopped accepting new requests.
 func (h *Handler) CloseAllTunnels() {
-	h.Shutdown()
+	h.tunnelMu.Lock()
+	conns := make([]net.Conn, 0, len(h.tunnels))
+	for c := range h.tunnels {
+		conns = append(conns, c)
+	}
+	h.tunnels = nil
+	h.tunnelMu.Unlock()
+
+	for _, c := range conns {
+		_ = c.Close()
+	}
 }
 
 // Shutdown closes all tracked tunnel connections and prevents new ones.
 func (h *Handler) Shutdown() {
 	h.tunnelMu.Lock()
-	defer h.tunnelMu.Unlock()
 	h.shuttingDown = true
-	for c := range h.tunnels {
-		_ = c.Close()
-	}
-	h.tunnels = nil
+	h.tunnelMu.Unlock()
+
+	h.CloseAllTunnels()
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
