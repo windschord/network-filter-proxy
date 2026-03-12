@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -109,10 +110,15 @@ func healthcheckAddr() string {
 	if port == "" {
 		port = "8080"
 	}
-	host := os.Getenv("API_BIND_ADDR")
+	host := strings.TrimSpace(os.Getenv("API_BIND_ADDR"))
 	switch host {
 	case "", "127.0.0.1", "0.0.0.0", "::":
 		host = "127.0.0.1"
+	default:
+		// Invalid IP falls back to 127.0.0.1, consistent with config.Load().
+		if net.ParseIP(host) == nil {
+			host = "127.0.0.1"
+		}
 	}
 	return net.JoinHostPort(host, port)
 }

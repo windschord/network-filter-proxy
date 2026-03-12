@@ -94,6 +94,33 @@ func TestHealthcheckAddr_SpecificBindAddr(t *testing.T) {
 	}
 }
 
+func TestHealthcheckAddr_InvalidFallback(t *testing.T) {
+	// Invalid API_BIND_ADDR should fall back to 127.0.0.1,
+	// consistent with config.Load() behavior.
+	for _, bindAddr := range []string{"abc", "999.999.999.999", "not-an-ip"} {
+		t.Run(bindAddr, func(t *testing.T) {
+			t.Setenv("API_BIND_ADDR", bindAddr)
+			t.Setenv("API_PORT", "8080")
+
+			addr := healthcheckAddr()
+			if addr != "127.0.0.1:8080" {
+				t.Errorf("healthcheckAddr() = %q, want %q (fallback for invalid %q)", addr, "127.0.0.1:8080", bindAddr)
+			}
+		})
+	}
+}
+
+func TestHealthcheckAddr_WhitespaceTrimmed(t *testing.T) {
+	// Leading/trailing whitespace should be trimmed before parsing.
+	t.Setenv("API_BIND_ADDR", " 172.20.0.2 ")
+	t.Setenv("API_PORT", "8080")
+
+	addr := healthcheckAddr()
+	if addr != "172.20.0.2:8080" {
+		t.Errorf("healthcheckAddr() = %q, want %q", addr, "172.20.0.2:8080")
+	}
+}
+
 // --- Integration tests (with real server) ---
 
 func TestRunHealthcheck_Success(t *testing.T) {

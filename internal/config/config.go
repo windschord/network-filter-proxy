@@ -23,7 +23,7 @@ func Load() Config {
 	if v, err := strconv.Atoi(getEnv("SHUTDOWN_TIMEOUT", "30")); err == nil && v > 0 {
 		timeout = v
 	}
-	apiBindAddrRaw := getEnv("API_BIND_ADDR", "127.0.0.1")
+	apiBindAddrRaw := strings.TrimSpace(getEnv("API_BIND_ADDR", "127.0.0.1"))
 	apiBindAddr := apiBindAddrRaw
 	apiBindAddrFallback := false
 	if net.ParseIP(apiBindAddr) == nil {

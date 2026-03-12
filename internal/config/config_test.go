@@ -152,6 +152,18 @@ func TestLoad_APIBindAddr_IPv6(t *testing.T) {
 	}
 }
 
+func TestLoad_APIBindAddr_WhitespaceTrimmed(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", " 0.0.0.0 ")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "0.0.0.0" {
+		t.Errorf("APIBindAddr = %q, want %q (trimmed)", cfg.APIBindAddr, "0.0.0.0")
+	}
+	if cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = true, want false (valid after trimming)")
+	}
+}
+
 func TestLoad_LogLevel_InvalidFallback(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "verbose")
 
