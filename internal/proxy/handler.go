@@ -206,7 +206,6 @@ func (h *Handler) untrackTunnel(conns ...net.Conn) {
 	}
 }
 
-// CloseAllTunnels closes all tracked tunnel connections.
 // CloseAllTunnels closes all currently tracked tunnel connections without
 // preventing new ones from being accepted. Called during graceful shutdown
 // after Server.Shutdown() has already stopped accepting new requests.

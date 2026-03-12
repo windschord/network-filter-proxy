@@ -8,6 +8,20 @@ import (
 	"testing"
 )
 
+// newIPv4TestServer creates a test server bound to 127.0.0.1 (IPv4 only)
+// to match runHealthcheck's 127.0.0.1 target and avoid IPv6 environment issues.
+func newIPv4TestServer(handler http.Handler) *httptest.Server {
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener.Close()
+	srv.Listener = l
+	srv.Start()
+	return srv
+}
+
 func extractPort(t *testing.T, srv *httptest.Server) string {
 	t.Helper()
 	_, port, err := net.SplitHostPort(srv.Listener.Addr().String())
@@ -18,7 +32,7 @@ func extractPort(t *testing.T, srv *httptest.Server) string {
 }
 
 func TestRunHealthcheck_Success(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4TestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v1/health" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -37,7 +51,7 @@ func TestRunHealthcheck_Success(t *testing.T) {
 }
 
 func TestRunHealthcheck_ServerDown(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +68,7 @@ func TestRunHealthcheck_ServerDown(t *testing.T) {
 }
 
 func TestRunHealthcheck_Non200(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4TestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
@@ -79,7 +93,7 @@ func TestRunHealthcheck_DefaultPort(t *testing.T) {
 }
 
 func TestRunHealthcheck_WildcardBindAddr(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newIPv4TestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
