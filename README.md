@@ -48,7 +48,8 @@ curl -x http://127.0.0.1:3128 http://example.com
 When running in Docker with the default bridge network, use `docker exec`:
 
 ```bash
-docker exec filter-proxy wget -q -O- --post-data='{"entries":[{"host":"example.com"}]}' \
+docker exec filter-proxy wget -q -O- --method=PUT \
+  --body-data='{"entries":[{"host":"example.com"}]}' \
   --header='Content-Type: application/json' \
   http://127.0.0.1:8080/api/v1/rules/10.0.0.5
 ```
@@ -162,7 +163,7 @@ internal/
 
 ```bash
 # Unit + integration tests (excluding E2E)
-go test -race $(go list ./... | grep -v /e2e/)
+go test -race $(go list ./... | grep -v '/e2e$')
 
 # E2E tests only
 go test -race ./e2e/...

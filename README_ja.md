@@ -48,7 +48,8 @@ curl -x http://127.0.0.1:3128 http://example.com
 Docker のデフォルトブリッジネットワークで実行している場合は `docker exec` を使用します:
 
 ```bash
-docker exec filter-proxy wget -q -O- --post-data='{"entries":[{"host":"example.com"}]}' \
+docker exec filter-proxy wget -q -O- --method=PUT \
+  --body-data='{"entries":[{"host":"example.com"}]}' \
   --header='Content-Type: application/json' \
   http://127.0.0.1:8080/api/v1/rules/10.0.0.5
 ```
@@ -162,7 +163,7 @@ internal/
 
 ```bash
 # ユニットテスト + 結合テスト（E2E を除く）
-go test -race $(go list ./... | grep -v /e2e/)
+go test -race $(go list ./... | grep -v '/e2e$')
 
 # E2E テストのみ
 go test -race ./e2e/...
