@@ -8,7 +8,7 @@ import (
 )
 
 // newIPv4TestServer creates a test server bound to 127.0.0.1 (IPv4 only)
-// to match runHealthcheck's 127.0.0.1 target and avoid IPv6 environment issues.
+// to match the default healthcheck target and avoid IPv6 environment issues.
 func newIPv4TestServer(t *testing.T, handler http.Handler) *httptest.Server {
 	t.Helper()
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
@@ -35,6 +35,7 @@ func extractPort(t *testing.T, srv *httptest.Server) string {
 
 func TestHealthcheckAddr_Default(t *testing.T) {
 	t.Setenv("API_PORT", "")
+	t.Setenv("API_BIND_ADDR", "")
 
 	addr := healthcheckAddr()
 	if addr != "127.0.0.1:8080" {
@@ -44,6 +45,7 @@ func TestHealthcheckAddr_Default(t *testing.T) {
 
 func TestHealthcheckAddr_CustomPort(t *testing.T) {
 	t.Setenv("API_PORT", "9090")
+	t.Setenv("API_BIND_ADDR", "")
 
 	addr := healthcheckAddr()
 	if addr != "127.0.0.1:9090" {
@@ -51,20 +53,42 @@ func TestHealthcheckAddr_CustomPort(t *testing.T) {
 	}
 }
 
-func TestHealthcheckAddr_IgnoresBindAddr(t *testing.T) {
-	// healthcheckAddr always returns 127.0.0.1 regardless of API_BIND_ADDR.
-	for _, bindAddr := range []string{"0.0.0.0", "::", "172.20.0.2", "::1"} {
+func TestHealthcheckAddr_WildcardBindAddr(t *testing.T) {
+	// Wildcard addresses (0.0.0.0, ::) should resolve to 127.0.0.1
+	// since the server listens on all interfaces including loopback.
+	for _, bindAddr := range []string{"0.0.0.0", "::", "127.0.0.1", ""} {
 		t.Run(bindAddr, func(t *testing.T) {
 			t.Setenv("API_BIND_ADDR", bindAddr)
 			t.Setenv("API_PORT", "8080")
 
 			addr := healthcheckAddr()
-			host, _, err := net.SplitHostPort(addr)
-			if err != nil {
-				t.Fatalf("failed to parse addr %q: %v", addr, err)
+			if addr != "127.0.0.1:8080" {
+				t.Errorf("healthcheckAddr() = %q, want %q", addr, "127.0.0.1:8080")
 			}
-			if host != "127.0.0.1" {
-				t.Errorf("healthcheckAddr() host = %q, want %q", host, "127.0.0.1")
+		})
+	}
+}
+
+func TestHealthcheckAddr_SpecificBindAddr(t *testing.T) {
+	// Specific non-loopback addresses should be used as-is
+	// so the healthcheck reaches the actual API bind address.
+	tests := []struct {
+		bindAddr string
+		wantHost string
+	}{
+		{"172.20.0.2", "172.20.0.2"},
+		{"::1", "::1"},
+		{"10.0.0.1", "10.0.0.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.bindAddr, func(t *testing.T) {
+			t.Setenv("API_BIND_ADDR", tt.bindAddr)
+			t.Setenv("API_PORT", "8080")
+
+			addr := healthcheckAddr()
+			want := net.JoinHostPort(tt.wantHost, "8080")
+			if addr != want {
+				t.Errorf("healthcheckAddr() = %q, want %q", addr, want)
 			}
 		})
 	}

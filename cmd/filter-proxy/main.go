@@ -101,18 +101,23 @@ func run() int {
 }
 
 // healthcheckAddr resolves the target address for the healthcheck probe.
-// Always uses 127.0.0.1 per US-009/REQ-009-002; reads API_PORT from env.
+// For wildcard bind addresses (0.0.0.0, ::) and the default (127.0.0.1),
+// it probes 127.0.0.1. For specific bind addresses (e.g. 172.20.0.2, ::1),
+// it probes the actual bind address so the check reaches the API.
 func healthcheckAddr() string {
 	port := os.Getenv("API_PORT")
 	if port == "" {
 		port = "8080"
 	}
-	return net.JoinHostPort("127.0.0.1", port)
+	host := os.Getenv("API_BIND_ADDR")
+	switch host {
+	case "", "127.0.0.1", "0.0.0.0", "::":
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, port)
 }
 
-// runHealthcheck always connects to 127.0.0.1 per US-009/REQ-009-002.
-// When API_BIND_ADDR is 0.0.0.0, the server listens on all interfaces
-// including loopback, so 127.0.0.1 is always reachable.
+// runHealthcheck probes the Management API health endpoint.
 func runHealthcheck() int {
 	addr := healthcheckAddr()
 	client := &http.Client{Timeout: 5 * time.Second}
