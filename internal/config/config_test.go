@@ -84,3 +84,57 @@ func TestLoad_ShutdownTimeout_Negative(t *testing.T) {
 		t.Errorf("ShutdownTimeout = %v, want %v", cfg.ShutdownTimeout, 30*time.Second)
 	}
 }
+
+func TestLoad_APIBindAddr_Default(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "127.0.0.1")
+	}
+}
+
+func TestLoad_APIBindAddr_AllInterfaces(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "0.0.0.0")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "0.0.0.0" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "0.0.0.0")
+	}
+}
+
+func TestLoad_APIBindAddr_SpecificIP(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "172.20.0.2")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "172.20.0.2" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "172.20.0.2")
+	}
+}
+
+func TestLoad_APIBindAddr_InvalidString(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "abc")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q (fallback)", cfg.APIBindAddr, "127.0.0.1")
+	}
+}
+
+func TestLoad_APIBindAddr_InvalidIP(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "999.999.999.999")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q (fallback)", cfg.APIBindAddr, "127.0.0.1")
+	}
+}
+
+func TestLoad_APIBindAddr_IPv6(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "::1")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "::1" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "::1")
+	}
+}
