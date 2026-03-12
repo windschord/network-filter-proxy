@@ -24,7 +24,7 @@ type Handler struct {
 // EntryJSON represents a whitelist entry in API requests/responses.
 type EntryJSON struct {
 	Host string `json:"host" example:"api.anthropic.com"`
-	Port int    `json:"port" example:"443"`
+	Port int    `json:"port,omitempty" example:"443"`
 }
 
 // PutRulesRequest is the request body for PUT /api/v1/rules/{sourceIP}.

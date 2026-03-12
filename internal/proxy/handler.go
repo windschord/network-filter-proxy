@@ -206,7 +206,13 @@ func (h *Handler) untrackTunnel(conns ...net.Conn) {
 	}
 }
 
-// Shutdown closes all tracked tunnel connections.
+// CloseAllTunnels closes all tracked tunnel connections.
+// Aligns with the documented server shutdown flow (ProxyHandler.CloseAllTunnels()).
+func (h *Handler) CloseAllTunnels() {
+	h.Shutdown()
+}
+
+// Shutdown closes all tracked tunnel connections and prevents new ones.
 func (h *Handler) Shutdown() {
 	h.tunnelMu.Lock()
 	defer h.tunnelMu.Unlock()

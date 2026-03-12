@@ -22,8 +22,12 @@ func Matches(entry Entry, host string, port int) bool {
 		return ip != nil && ipNet.Contains(ip)
 	}
 
-	if net.ParseIP(entryHost) != nil {
-		return host == entryHost
+	if ipEntry := net.ParseIP(entryHost); ipEntry != nil {
+		ipHost := net.ParseIP(host)
+		if ipHost == nil {
+			return false
+		}
+		return ipHost.Equal(ipEntry)
 	}
 
 	if strings.HasPrefix(entryHost, "*.") {

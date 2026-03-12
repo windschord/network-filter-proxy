@@ -86,7 +86,7 @@ func run() int {
 		}(srv)
 	}
 	wg.Wait()
-	proxyHandler.Shutdown()
+	proxyHandler.CloseAllTunnels()
 	log.Info("shutdown complete")
 	return exitCode
 }
