@@ -10,8 +10,8 @@ func Matches(entry Entry, host string, port int) bool {
 	if entry.Port != 0 && entry.Port != port {
 		return false
 	}
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	entryHost := strings.ToLower(strings.TrimSuffix(entry.Host, "."))
+	host = NormalizeHost(host)
+	entryHost := NormalizeHost(entry.Host)
 
 	if strings.Contains(entryHost, "/") {
 		_, ipNet, err := net.ParseCIDR(entryHost)
