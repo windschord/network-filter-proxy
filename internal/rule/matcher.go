@@ -125,6 +125,9 @@ func rejectBadHostChars(host string) *ValidationError {
 }
 
 func validateHostname(host string) error {
+	if len(host) > 253 {
+		return fmt.Errorf("invalid host: exceeds 253 characters: %s", host[:50]+"...")
+	}
 	if strings.Contains(host, "..") {
 		return fmt.Errorf("invalid host: consecutive dots: %s", host)
 	}
