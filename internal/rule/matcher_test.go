@@ -86,6 +86,49 @@ func TestMatches_NormalizeTrailingDot(t *testing.T) {
 	}
 }
 
+func TestMatches_IPv6_Exact(t *testing.T) {
+	entry := rule.Entry{Host: "::1", Port: 443}
+	if !rule.Matches(entry, "::1", 443) {
+		t.Error("expected match for exact IPv6")
+	}
+}
+
+func TestMatches_IPv6_Normalized(t *testing.T) {
+	// ::1 and 0:0:0:0:0:0:0:1 should be treated as equal via net.IP.Equal()
+	entry := rule.Entry{Host: "::1", Port: 443}
+	if !rule.Matches(entry, "0:0:0:0:0:0:0:1", 443) {
+		t.Error("expected match for normalized IPv6 (expanded form)")
+	}
+}
+
+func TestMatches_IPv6_ReverseNormalized(t *testing.T) {
+	entry := rule.Entry{Host: "0:0:0:0:0:0:0:1", Port: 443}
+	if !rule.Matches(entry, "::1", 443) {
+		t.Error("expected match for normalized IPv6 (compact form)")
+	}
+}
+
+func TestMatches_IPv6_CIDR(t *testing.T) {
+	entry := rule.Entry{Host: "2001:db8::/32", Port: 443}
+	if !rule.Matches(entry, "2001:db8::1", 443) {
+		t.Error("expected IPv6 CIDR match")
+	}
+}
+
+func TestMatches_IPv6_CIDR_NoMatch(t *testing.T) {
+	entry := rule.Entry{Host: "2001:db8::/32", Port: 443}
+	if rule.Matches(entry, "2001:db9::1", 443) {
+		t.Error("expected no IPv6 CIDR match for out-of-range address")
+	}
+}
+
+func TestMatches_IPv6_Full(t *testing.T) {
+	entry := rule.Entry{Host: "2001:0db8:0000:0000:0000:0000:0000:0001", Port: 443}
+	if !rule.Matches(entry, "2001:db8::1", 443) {
+		t.Error("expected match for full IPv6 vs compact form")
+	}
+}
+
 func TestValidateEntry_EmptyHost(t *testing.T) {
 	err := rule.ValidateEntry(rule.Entry{Host: "", Port: 443})
 	if err == nil {

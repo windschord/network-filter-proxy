@@ -146,7 +146,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	sourceIP, ok := normalizeIP(r.PathValue("sourceIP"))
 	if !ok {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
-			Error:   "invalid_request",
+			Error:   "bad_request",
 			Message: fmt.Sprintf("invalid source IP: %s", r.PathValue("sourceIP")),
 		})
 		return
@@ -157,7 +157,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
-			Error:   "invalid_request",
+			Error:   "bad_request",
 			Message: "failed to parse request body: " + err.Error(),
 		})
 		return
@@ -165,7 +165,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 
 	if req.Entries == nil {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
-			Error:   "invalid_request",
+			Error:   "bad_request",
 			Message: "entries field is required",
 		})
 		return
@@ -227,7 +227,7 @@ func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) 
 	sourceIP, ok := normalizeIP(r.PathValue("sourceIP"))
 	if !ok {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
-			Error:   "invalid_request",
+			Error:   "bad_request",
 			Message: fmt.Sprintf("invalid source IP: %s", r.PathValue("sourceIP")),
 		})
 		return

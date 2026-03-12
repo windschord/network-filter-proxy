@@ -261,3 +261,25 @@ func TestProxyHandler_CONNECT_DeniedHost(t *testing.T) {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
+
+func TestProxyHandler_CONNECT_BadGateway(t *testing.T) {
+	store := rule.NewStore()
+	h := newTestHandler(t, store)
+
+	proxyServer := newIPv4Server(t, h)
+	defer proxyServer.Close()
+
+	srcIP := loopbackIP(t, proxyServer.URL)
+	// Allow CONNECT to an unreachable host (port that nothing listens on)
+	store.Set(srcIP, []rule.Entry{{Host: "127.0.0.1", Port: 0}})
+
+	proxyURL, _ := url.Parse(proxyServer.URL)
+
+	// CONNECT to an unreachable port -> should get 502 Bad Gateway
+	resp := sendCONNECT(t, proxyURL.Host, "127.0.0.1:1")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusBadGateway)
+	}
+}
