@@ -255,7 +255,7 @@ feat: Implement Matcher with wildcard/CIDR support
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-003 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 30分 |
 | **依存関係** | [TASK-002](TASK-002.md) @TASK-002.md（同フェーズ・並列実行可） |
 | **対応要件** | REQ-002-001〜010, REQ-004-011〜013 |

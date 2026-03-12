@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Run tests
+        run: |
+          PKGS=$(go list ./... | grep -v '/e2e$')
+          go test -race -coverprofile=coverage.out -coverpkg=./internal/... $PKGS
+      - name: Check coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "Coverage: ${COVERAGE}%"
+          awk -v c="$COVERAGE" 'BEGIN { exit (c >= 80 ? 0 : 1) }'
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Run E2E tests
+        run: go test -race ./e2e/...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.1.6
+          install-mode: goinstall
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Check OpenAPI spec is up-to-date
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.4
+          swag init -g cmd/filter-proxy/main.go -o docs/swagger --outputTypes yaml
+          git diff --exit-code docs/swagger/swagger.yaml || (echo "FAIL: OpenAPI spec is out of date. Run 'make swagger' and commit." && exit 1)
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, e2e, lint, openapi]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t filter-proxy .
+      - name: Check image size
+        run: |
+          SIZE=$(docker image inspect filter-proxy --format='{{.Size}}')
+          echo "Image size: $SIZE bytes"
+          # 30MB = 31457280 bytes
+          [ "$SIZE" -lt "31457280" ] && echo "OK: under 30MB" || (echo "FAIL: Image too large" && exit 1)

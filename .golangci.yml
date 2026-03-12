@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - cyclop
+  settings:
+    cyclop:
+      max-complexity: 18
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+
+run:
+  timeout: 5m

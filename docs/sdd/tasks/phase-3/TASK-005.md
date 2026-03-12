@@ -249,7 +249,7 @@ feat: Implement APIHandler with full CRUD endpoints
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-005 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 45分 |
 | **依存関係** | [TASK-002](../phase-2/TASK-002.md) @../phase-2/TASK-002.md, [TASK-003](../phase-2/TASK-003.md) @../phase-2/TASK-003.md |
 | **対応要件** | REQ-004-001〜013, REQ-005-001〜003 |

@@ -205,7 +205,7 @@ feat: Implement RuleStore with thread-safe CRUD
 | 項目 | 値 |
 |------|-----|
 | **タスクID** | TASK-002 |
-| **ステータス** | `TODO` |
+| **ステータス** | `DONE` |
 | **推定工数** | 25分 |
 | **依存関係** | [TASK-001](../phase-1/TASK-001.md) @../phase-1/TASK-001.md |
 | **対応要件** | REQ-003-001〜004 |
