@@ -162,6 +162,14 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	// Reject trailing data after the first JSON value.
+	if dec.More() {
+		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
+			Error:   "bad_request",
+			Message: "request body must contain exactly one JSON object",
+		})
+		return
+	}
 
 	if req.Entries == nil {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
