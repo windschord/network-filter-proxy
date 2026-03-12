@@ -34,6 +34,8 @@ func run() int {
 	proxyHandler := proxy.NewHandler(store, log)
 	apiHandler := api.NewHandler(store, log, proxyHandler)
 
+	// Ports are configurable via environment variables (PROXY_PORT, API_PORT).
+	// API server always binds to 127.0.0.1 (loopback only) per security requirements.
 	proxySrv := &http.Server{
 		Addr:    ":" + cfg.ProxyPort,
 		Handler: proxyHandler,

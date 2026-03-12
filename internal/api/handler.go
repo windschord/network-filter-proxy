@@ -29,7 +29,7 @@ type EntryJSON struct {
 
 // PutRulesRequest is the request body for PUT /api/v1/rules/{sourceIP}.
 type PutRulesRequest struct {
-	Entries []EntryJSON `json:"entries"`
+	Entries []EntryJSON `json:"entries" binding:"required"`
 }
 
 // PutRulesResponse is the response body for PUT /api/v1/rules/{sourceIP}.
@@ -217,6 +217,7 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 //	@Produce		json
 //	@Param			sourceIP	path	string	true	"Source IPv4 address"	example(172.20.0.3)
 //	@Success		204			"Rules deleted"
+//	@Failure		400			{object}	ErrorResponse
 //	@Failure		404			{object}	ErrorResponse
 //	@Router			/api/v1/rules/{sourceIP} [delete]
 func (h *Handler) handleDeleteRulesByIP(w http.ResponseWriter, r *http.Request) {
