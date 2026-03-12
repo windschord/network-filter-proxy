@@ -100,13 +100,12 @@ func run() int {
 	return exitCode
 }
 
+// runHealthcheck always connects to 127.0.0.1 per US-009/REQ-009-002.
+// When API_BIND_ADDR is 0.0.0.0, the server listens on all interfaces
+// including loopback, so 127.0.0.1 is always reachable.
 func runHealthcheck() int {
 	cfg := config.Load()
-	host := cfg.APIBindAddr
-	if host == "0.0.0.0" || host == "::" {
-		host = "127.0.0.1"
-	}
-	addr := net.JoinHostPort(host, cfg.APIPort)
+	addr := net.JoinHostPort("127.0.0.1", cfg.APIPort)
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get("http://" + addr + "/api/v1/health")
 	if err != nil {

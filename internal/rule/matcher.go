@@ -132,8 +132,16 @@ func validateHostname(host string) error {
 		return fmt.Errorf("invalid host: leading or trailing dot: %s", host)
 	}
 	for _, label := range strings.Split(host, ".") {
+		if len(label) > 63 {
+			return fmt.Errorf("invalid host: label exceeds 63 characters: %s", host)
+		}
 		if strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
 			return fmt.Errorf("invalid host: label starts or ends with '-': %s", host)
+		}
+		for _, c := range label {
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '*' {
+				return fmt.Errorf("invalid host: invalid character %q in label: %s", c, host)
+			}
 		}
 	}
 	return nil

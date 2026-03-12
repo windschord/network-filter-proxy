@@ -216,7 +216,7 @@ func (h *Handler) CloseAllTunnels() {
 	for c := range h.tunnels {
 		conns = append(conns, c)
 	}
-	h.tunnels = nil
+	h.tunnels = make(map[net.Conn]struct{})
 	h.tunnelMu.Unlock()
 
 	for _, c := range conns {
