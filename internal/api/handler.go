@@ -153,7 +153,9 @@ func (h *Handler) handlePutRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req PutRulesRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
 		h.writeJSON(w, http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: "failed to parse request body: " + err.Error(),

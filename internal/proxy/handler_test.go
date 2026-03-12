@@ -22,17 +22,55 @@ func newTestHandler(t *testing.T, store *rule.Store) *proxy.Handler {
 	return proxy.NewHandler(store, log)
 }
 
+// newIPv4Server creates a test server bound to 127.0.0.1 (IPv4 only).
+func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen tcp4: %v", err)
+	}
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener.Close()
+	srv.Listener = l
+	srv.Start()
+	return srv
+}
+
+// newIPv4TLSServer creates a TLS test server bound to 127.0.0.1 (IPv4 only).
+func newIPv4TLSServer(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen tcp4: %v", err)
+	}
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener.Close()
+	srv.Listener = l
+	srv.StartTLS()
+	return srv
+}
+
+// loopbackIP extracts the loopback IP from a server URL (handles both IPv4 and IPv6).
+func loopbackIP(t *testing.T, serverURL string) string {
+	t.Helper()
+	u, err := url.Parse(serverURL)
+	if err != nil {
+		t.Fatalf("parse URL: %v", err)
+	}
+	return u.Hostname()
+}
+
 func TestProxyHandler_UnregisteredIP_HTTP(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
 	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
 
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer target.Close()
@@ -55,17 +93,18 @@ func TestProxyHandler_AllowedHost_HTTP(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, "OK")
 	}))
 	defer target.Close()
 
+	srcIP := loopbackIP(t, proxyServer.URL)
 	targetURL, _ := url.Parse(target.URL)
-	store.Set("127.0.0.1", []rule.Entry{{Host: targetURL.Hostname(), Port: 0}})
+	store.Set(srcIP, []rule.Entry{{Host: targetURL.Hostname(), Port: 0}})
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
 	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
@@ -85,15 +124,16 @@ func TestProxyHandler_DeniedHost_HTTP(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer target.Close()
 
-	store.Set("127.0.0.1", []rule.Entry{{Host: "other.example.com", Port: 443}})
+	srcIP := loopbackIP(t, proxyServer.URL)
+	store.Set(srcIP, []rule.Entry{{Host: "other.example.com", Port: 443}})
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
 	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
@@ -146,7 +186,7 @@ func TestProxyHandler_CONNECT_UnregisteredIP(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
@@ -164,17 +204,18 @@ func TestProxyHandler_CONNECT_AllowedHost(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
-	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4TLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, "CONNECT OK")
 	}))
 	defer target.Close()
 
+	srcIP := loopbackIP(t, proxyServer.URL)
 	targetURL, _ := url.Parse(target.URL)
-	store.Set("127.0.0.1", []rule.Entry{{Host: targetURL.Hostname(), Port: 0}})
+	store.Set(srcIP, []rule.Entry{{Host: targetURL.Hostname(), Port: 0}})
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
 	client := &http.Client{
@@ -203,11 +244,12 @@ func TestProxyHandler_CONNECT_DeniedHost(t *testing.T) {
 	store := rule.NewStore()
 	h := newTestHandler(t, store)
 
-	proxyServer := httptest.NewServer(h)
+	proxyServer := newIPv4Server(t, h)
 	defer proxyServer.Close()
 
+	srcIP := loopbackIP(t, proxyServer.URL)
 	// Set rules for a different host
-	store.Set("127.0.0.1", []rule.Entry{{Host: "other.example.com", Port: 443}})
+	store.Set(srcIP, []rule.Entry{{Host: "other.example.com", Port: 443}})
 
 	proxyURL, _ := url.Parse(proxyServer.URL)
 

@@ -26,6 +26,35 @@ type testEnv struct {
 	apiServer    *httptest.Server
 }
 
+// newIPv4Server creates a test server bound to 127.0.0.1 (IPv4 only)
+// to avoid IPv6 loopback issues on some environments.
+func newIPv4Server(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen tcp4: %v", err)
+	}
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener.Close()
+	srv.Listener = l
+	srv.Start()
+	return srv
+}
+
+// newIPv4TLSServer creates a TLS test server bound to 127.0.0.1 (IPv4 only).
+func newIPv4TLSServer(t *testing.T, handler http.Handler) *httptest.Server {
+	t.Helper()
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen tcp4: %v", err)
+	}
+	srv := httptest.NewUnstartedServer(handler)
+	srv.Listener.Close()
+	srv.Listener = l
+	srv.StartTLS()
+	return srv
+}
+
 func setupTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	log := logger.New("json", "debug")
@@ -33,8 +62,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 	proxyHandler := proxy.NewHandler(store, log)
 	apiHandler := api.NewHandler(store, log, proxyHandler)
 
-	proxyServer := httptest.NewServer(proxyHandler)
-	apiServer := httptest.NewServer(apiHandler.Routes())
+	proxyServer := newIPv4Server(t, proxyHandler)
+	apiServer := newIPv4Server(t, apiHandler.Routes())
 
 	t.Cleanup(func() {
 		proxyServer.Close()
@@ -144,7 +173,7 @@ func TestE2E_ProxyAllowAndDeny(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// Target HTTP server
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, "Hello from target")
 	}))
@@ -201,7 +230,7 @@ func TestE2E_ProxyAllowAndDeny(t *testing.T) {
 	}
 
 	// Step 4: Request to a different target should be denied
-	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	other := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer other.Close()
@@ -223,7 +252,7 @@ func TestE2E_ProxyCONNECT_Allow(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// TLS target server
-	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4TLSServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, "HTTPS OK")
 	}))
@@ -377,7 +406,7 @@ func TestE2E_WildcardMatching(t *testing.T) {
 	env := setupTestEnv(t)
 
 	// Create a target server
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	target := newIPv4Server(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer target.Close()
