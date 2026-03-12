@@ -40,6 +40,8 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 | US-005 | ヘルスチェック | 中 | 承認済 | [詳細](stories/US-005.md) @stories/US-005.md |
 | US-006 | 構造化ログ出力 | 中 | 承認済 | [詳細](stories/US-006.md) @stories/US-006.md |
 | US-007 | Graceful Shutdown | 高 | 承認済 | [詳細](stories/US-007.md) @stories/US-007.md |
+| US-008 | Management API バインドアドレス設定 | 高 | 定義済 | [詳細](stories/US-008.md) @stories/US-008.md |
+| US-009 | ヘルスチェックサブコマンド | 高 | 定義済 | [詳細](stories/US-009.md) @stories/US-009.md |
 
 ## 機能要件サマリ
 
@@ -52,6 +54,8 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 | REQ-005-001〜003 | ヘルスチェックエンドポイント | US-005 | 定義済 |
 | REQ-006-001〜009 | 構造化 JSON ログ（接続・ルール変更操作・フォールバック） | US-006 | 定義済 |
 | REQ-007-001〜005 | SIGTERM による Graceful Shutdown | US-007 | 定義済 |
+| REQ-008-001〜004 | Management API バインドアドレス設定（`API_BIND_ADDR`） | US-008 | 定義済 |
+| REQ-009-001〜009 | ヘルスチェックサブコマンド・Dockerfile HEALTHCHECK | US-009 | 定義済 |
 
 ## 非機能要件一覧
 
@@ -70,7 +74,7 @@ Go + `elazarl/goproxy` で実装し、独立したリポジトリで管理する
 ## スコープ外
 
 - TLS 終端・MITM による通信内容の検査
-- Management API の認証・認可機能（`127.0.0.1` バインド固定により外部からのアクセスを遮断しているため不要）
+- Management API の認証・認可機能（デフォルト `127.0.0.1` バインド + ネットワーク分離により外部からのアクセスを遮断しているため不要）
 - ルールの永続化（再起動時はルールが消える。ClaudeWork が再登録する）
 - HTTP/2・gRPC プロキシ対応（HTTP/1.1 CONNECT のみ）
 - 複数インスタンスでの分散運用・ルール同期

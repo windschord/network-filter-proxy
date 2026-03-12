@@ -28,6 +28,7 @@
 | Phase 2: コアロジック | 2 | 0 | 0 | 0 | [詳細](phase-2/) @phase-2/ |
 | Phase 3: サーバー実装 | 2 | 0 | 0 | 0 | [詳細](phase-3/) @phase-3/ |
 | Phase 4: 統合・Docker | 2 | 0 | 0 | 0 | [詳細](phase-4/) @phase-4/ |
+| Phase 5: API_BIND_ADDR・ヘルスチェック | 0 | 0 | 3 | 0 | [詳細](phase-5/) @phase-5/ |
 
 ---
 
@@ -64,6 +65,15 @@
 | TASK-006 | main.go 統合（DI・Graceful Shutdown） | DONE | TASK-004, TASK-005 | 30min | [詳細](phase-4/TASK-006.md) @phase-4/TASK-006.md |
 | TASK-007 | Dockerfile・CI 設定 | DONE | TASK-006 | 25min | [詳細](phase-4/TASK-007.md) @phase-4/TASK-007.md |
 
+### Phase 5: API_BIND_ADDR・ヘルスチェック（Issue #5, #6）
+*推定期間: 25〜50分（AIエージェント作業時間）*
+
+| タスクID | タイトル | ステータス | 依存 | 見積 | 詳細リンク |
+|----------|---------|-----------|------|------|-----------|
+| TASK-008 | Config に API_BIND_ADDR を追加（バリデーション付き） | TODO | - | 15min | [詳細](phase-5/TASK-008.md) @phase-5/TASK-008.md |
+| TASK-009 | healthcheck サブコマンド + API バインドアドレス適用 | TODO | TASK-008 | 25min | [詳細](phase-5/TASK-009.md) @phase-5/TASK-009.md |
+| TASK-010 | Dockerfile HEALTHCHECK + ドキュメント更新 | TODO | TASK-009 | 10min | [詳細](phase-5/TASK-010.md) @phase-5/TASK-010.md |
+
 ---
 
 ## 並列実行グループ
@@ -81,6 +91,14 @@
 |--------|-------------|------|
 | TASK-004 | `internal/proxy/handler.go`, `handler_test.go` | TASK-002, TASK-003 |
 | TASK-005 | `internal/api/handler.go`, `handler_test.go` | TASK-002, TASK-003 |
+
+### グループ 3（Phase 5: 順次実行）
+
+| タスク | 対象ファイル | 依存 |
+|--------|-------------|------|
+| TASK-008 | `internal/config/config.go`, `config_test.go` | - |
+| TASK-009 | `cmd/filter-proxy/main.go`, `main_test.go` | TASK-008 |
+| TASK-010 | `Dockerfile`, `CLAUDE.md` | TASK-009 |
 
 ---
 
@@ -104,6 +122,10 @@ TASK-001 (基盤)
               └── TASK-005 (APIHandler)   ┘ ← 並列実行可能
                         └── TASK-006 (main.go)
                                   └── TASK-007 (Dockerfile/CI)
+
+TASK-008 (Config: API_BIND_ADDR)
+    └── TASK-009 (healthcheck + バインドアドレス適用)
+              └── TASK-010 (Dockerfile HEALTHCHECK + ドキュメント)
 ```
 
 ---
