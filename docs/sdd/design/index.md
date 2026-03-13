@@ -116,6 +116,8 @@ filter-proxy/
 | DEC-001 | フォワードプロキシライブラリとして elazarl/goproxy を採用 | 承認済 | [詳細](decisions/DEC-001.md) @decisions/DEC-001.md |
 | DEC-002 | HTTP ルーティングに Go 1.22 標準 net/http を使用 | 承認済 | [詳細](decisions/DEC-002.md) @decisions/DEC-002.md |
 | DEC-003 | ルールの永続化を行わない（メモリのみ） | 承認済 | [詳細](decisions/DEC-003.md) @decisions/DEC-003.md |
+| DEC-004 | Management API のバインドアドレスを環境変数で設定可能に | 承認済 | [詳細](decisions/DEC-004.md) @decisions/DEC-004.md |
+| DEC-005 | Go バイナリの healthcheck サブコマンドで Docker ヘルスチェック | 承認済 | [詳細](decisions/DEC-005.md) @decisions/DEC-005.md |
 
 ---
 
@@ -126,7 +128,7 @@ filter-proxy/
 - **ホスト正規化**: `strings.ToLower` + 末尾ドット除去でバイパス攻撃を防止（NFR-SEC-004）
 - **ホスト検証**: `ValidateEntry` でスキーム混入・内部ホワイトスペース・連続ドット・ラベル先頭末尾ダッシュ等の不正値を拒否（NFR-SEC-004）
 - **競合防止**: `sync.RWMutex` で RuleStore を保護。`go test -race` で検証（NFR-SEC-005）
-- **API 露出防止**: Management API（:8080）は internal network のみに公開（NFR-SEC-003）
+- **API 露出防止**: Management API（:8080）はデフォルト `127.0.0.1` バインド。`API_BIND_ADDR=0.0.0.0` 時はインフラ側のネットワーク分離に依存（NFR-SEC-003、DEC-004）
 
 ## パフォーマンス考慮事項
 
@@ -171,10 +173,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /filter-proxy ./cmd/fi
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder /filter-proxy /filter-proxy
 EXPOSE 3128 8080
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+  CMD ["/filter-proxy", "healthcheck"]
 ENTRYPOINT ["/filter-proxy"]
 ```
 
-**注意**: `gcr.io/distroless/static:nonroot` を使用して非 root ユーザーで実行する。distroless イメージには `curl` が存在しないため `HEALTHCHECK` 命令は使用しない。ヘルスチェックは Docker Compose / Kubernetes の外部プローブに委ねる（US-005）。
+**注意**: `gcr.io/distroless/static:nonroot` を使用して非 root ユーザーで実行する。distroless イメージには `curl` が存在しないため、Go バイナリの `healthcheck` サブコマンドで HEALTHCHECK を実現する（DEC-005、US-009）。
 
 ---
 
@@ -189,6 +193,8 @@ ENTRYPOINT ["/filter-proxy"]
 | REQ-005-001〜003 | APIHandler（/health エンドポイント） | 対応済 |
 | REQ-006-001〜009 | Logger（slog・接続ログ・操作ログ・フォールバック） | 対応済 |
 | REQ-007-001〜005 | Server（signal.NotifyContext + Shutdown） | 対応済 |
+| REQ-008-001〜004 | Config（APIBindAddr）・Server（バインドアドレス構築） | 対応済 |
+| REQ-009-001〜009 | Server（healthcheck サブコマンド）・Dockerfile（HEALTHCHECK） | 対応済 |
 | NFR-PERF-001〜003 | atomic.Int64 接続数・O(n) マッチング | 対応済 |
 | NFR-SEC-001〜005 | デフォルト拒否・TLS 非終端・正規化・RWMutex | 対応済 |
 | NFR-MNT-001〜004 | テスト・lint・distroless・Graceful shutdown | 対応済 |

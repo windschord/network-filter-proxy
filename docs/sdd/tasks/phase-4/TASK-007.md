@@ -60,7 +60,7 @@
 
 ### ステップ 1: Dockerfile を作成
 
-**注意**: `gcr.io/distroless/static:nonroot` には `curl` が存在しないため `HEALTHCHECK` 命令は使用しない。ヘルスチェックは Docker Compose / Kubernetes の外部 HTTP プローブに委ねる（US-005）。
+**注意**: `gcr.io/distroless/static:nonroot` には `curl` が存在しないため、Go バイナリの `healthcheck` サブコマンドで HEALTHCHECK を実現する（US-009、TASK-010 で対応済み）。
 
 ```dockerfile
 FROM golang:1.26-alpine AS builder

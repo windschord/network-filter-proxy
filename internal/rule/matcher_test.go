@@ -212,3 +212,47 @@ func TestValidateEntry_ValidIP(t *testing.T) {
 		t.Errorf("unexpected error for valid IP: %v", err)
 	}
 }
+
+func TestValidateEntry_HostExceeds253Chars(t *testing.T) {
+	// Build a hostname of 255 chars using valid labels (e.g. "aaa.aaa.aaa...")
+	long := ""
+	for len(long) < 256 {
+		long += "aaa."
+	}
+	long = long[:255] // ensure > 253 chars, trim to avoid trailing dot
+	if long[len(long)-1] == '.' {
+		long = long[:len(long)-1]
+	}
+	err := rule.ValidateEntry(rule.Entry{Host: long})
+	if err == nil {
+		t.Errorf("expected error for hostname of length %d, got nil", len(long))
+	}
+}
+
+func TestValidateEntry_LabelExceeds63Chars(t *testing.T) {
+	label := ""
+	for i := 0; i < 64; i++ {
+		label += "a"
+	}
+	err := rule.ValidateEntry(rule.Entry{Host: label + ".example.com"})
+	if err == nil {
+		t.Error("expected error for label exceeding 63 chars, got nil")
+	}
+}
+
+func TestValidateEntry_WildcardTLD(t *testing.T) {
+	for _, host := range []string{"*.com", "*.local", "*.net"} {
+		err := rule.ValidateEntry(rule.Entry{Host: host})
+		if err == nil {
+			t.Errorf("expected error for TLD wildcard %q, got nil", host)
+		}
+	}
+}
+
+func TestValidateEntry_WildcardMultiLevel(t *testing.T) {
+	// *.example.com should be valid (multi-level apex)
+	err := rule.ValidateEntry(rule.Entry{Host: "*.example.com"})
+	if err != nil {
+		t.Errorf("unexpected error for valid wildcard: %v", err)
+	}
+}

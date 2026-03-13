@@ -22,12 +22,14 @@
 type Config struct {
     ProxyPort       string        // PROXY_PORT (default: "3128")
     APIPort         string        // API_PORT   (default: "8080")
+    APIBindAddr     string        // API_BIND_ADDR (default: "127.0.0.1")
     LogLevel        string        // LOG_LEVEL  (default: "info")
     LogFormat       string        // LOG_FORMAT (default: "json")
     ShutdownTimeout time.Duration // SHUTDOWN_TIMEOUT 秒 (default: 30s)
 }
 
 // Load は環境変数から Config を読み込む
+// API_BIND_ADDR が不正な IP アドレスの場合は "127.0.0.1" にフォールバック
 func Load() Config
 ```
 
@@ -52,7 +54,7 @@ sequenceDiagram
     Main->>ProxyHandler: NewHandler(store, logger)
     Main->>APIHandler: NewHandler(store, logger, proxyHandler)
     Main->>ProxyServer: &http.Server{Addr: ":"+cfg.ProxyPort, Handler: proxyHandler}
-    Main->>APIServer: &http.Server{Addr: "127.0.0.1:"+cfg.APIPort, Handler: apiHandler.Routes()}
+    Main->>APIServer: &http.Server{Addr: cfg.APIBindAddr+":"+cfg.APIPort, Handler: apiHandler.Routes()}
     par
         Main->>ProxyServer: ListenAndServe() (goroutine)
     and
@@ -125,6 +127,7 @@ filter-proxy/
 |--------|-----------|-----|------|
 | `PROXY_PORT` | `3128` | string | プロキシリッスンポート |
 | `API_PORT` | `8080` | string | API リッスンポート |
+| `API_BIND_ADDR` | `127.0.0.1` | string | API バインドアドレス（不正値は `127.0.0.1` にフォールバック） |
 | `LOG_LEVEL` | `info` | string | `debug`/`info`/`warn`/`error` |
 | `LOG_FORMAT` | `json` | string | `json`/`text` |
 | `SHUTDOWN_TIMEOUT` | `30` | int (秒) | Graceful shutdown 待機時間 |
@@ -139,6 +142,11 @@ filter-proxy/
 - [ ] 正常系: シャットダウン時にアクティブな CONNECT トンネルが正常にクローズされる
 - [ ] 正常系: トンネル接続数のトラッキングが正確に動作する（trackConn/untrackConn）
 - [ ] 異常系: SHUTDOWN_TIMEOUT 内にトンネルクローズが完了する
+- [ ] 正常系: `API_BIND_ADDR=0.0.0.0` で全インターフェースにバインドされる
+- [ ] 正常系: `API_BIND_ADDR` 未設定時に `127.0.0.1` にバインドされる
+- [ ] 異常系: `API_BIND_ADDR` に不正値を設定した場合 `127.0.0.1` にフォールバックする
+- [ ] 正常系: `healthcheck` サブコマンドで API が 200 を返す場合に終了コード 0
+- [ ] 異常系: `healthcheck` サブコマンドで API が応答しない場合に終了コード 1
 
 ## CONNECT トンネルのトラッキングとシャットダウン
 
@@ -232,6 +240,58 @@ proxyHandler.CloseAllTunnels()
 log.Info("shutdown complete")
 ```
 
+## ヘルスチェックサブコマンド
+
+`main()` でコマンドライン引数を確認し、`healthcheck` が指定された場合はプロキシモードに入らずヘルスチェックを実行して終了する。
+
+```go
+func main() {
+    if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+        os.Exit(runHealthcheck())
+    }
+    os.Exit(run())
+}
+
+// healthcheckAddr はヘルスチェック対象アドレスを解決する。
+// ワイルドカード(0.0.0.0, ::)とデフォルト(127.0.0.1)は 127.0.0.1 に解決し、
+// 特定アドレス(172.20.0.2, ::1 等)はそのまま使用する。
+func healthcheckAddr() string {
+    port := os.Getenv("API_PORT")
+    if port == "" {
+        port = "8080"
+    }
+    host := os.Getenv("API_BIND_ADDR")
+    switch host {
+    case "", "127.0.0.1", "0.0.0.0", "::":
+        host = "127.0.0.1"
+    }
+    return net.JoinHostPort(host, port)
+}
+
+func runHealthcheck() int {
+    addr := healthcheckAddr()
+    client := &http.Client{Timeout: 5 * time.Second}
+    resp, err := client.Get("http://" + addr + "/api/v1/health")
+    if err != nil {
+        return 1
+    }
+    defer func() { _ = resp.Body.Close() }()
+    if resp.StatusCode == http.StatusOK {
+        return 0
+    }
+    return 1
+}
+```
+
+### 設計ポイント
+
+- ヘルスチェックのアドレス解決: ワイルドカード（`0.0.0.0`, `::`）およびデフォルト（`127.0.0.1`）の場合は `127.0.0.1` に接続する。特定アドレス（`172.20.0.2`, `::1` 等）の場合はそのアドレスに直接接続する
+- `API_PORT` 環境変数を参照してポートを決定する（`config.Load()` は使わず軽量に取得）
+- タイムアウトは 5 秒（Dockerfile の `--timeout=5s` と一致）
+- ログ初期化やコンポーネント生成は一切行わない
+
+---
+
 ## 注意事項
 
 - `net/http` の `Server.Shutdown()` は hijacked connections（HTTP CONNECT で確立された TCP トンネル）を閉じない。上記のトンネルトラッキング設計を実装してシャットダウン時に `CloseAllTunnels()` を呼び出すこと
@@ -240,4 +300,6 @@ log.Info("shutdown complete")
 ## 関連要件
 
 - [US-007](../../requirements/stories/US-007.md) @../../requirements/stories/US-007.md: Graceful Shutdown
+- [US-008](../../requirements/stories/US-008.md) @../../requirements/stories/US-008.md: Management API バインドアドレス設定
+- [US-009](../../requirements/stories/US-009.md) @../../requirements/stories/US-009.md: ヘルスチェックサブコマンド
 - [NFR-MNT-004](../../requirements/nfr/maintainability.md) @../../requirements/nfr/maintainability.md: Graceful shutdown の確実性

@@ -147,11 +147,10 @@ func (h *Handler) hijackTunnel(req *http.Request, client net.Conn, _ *goproxy.Pr
 	if host == "" && req.URL != nil {
 		host = req.URL.Host
 	}
-	// Ensure host includes a port for DialTimeout
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		host = net.JoinHostPort(host, "443")
-	}
-	remote, err := net.DialTimeout("tcp", host, 30*time.Second)
+	// Parse and reconstruct with numeric port to prevent service-name resolution bypass.
+	dstHost, dstPort := splitHostPort(host, 443)
+	target := net.JoinHostPort(dstHost, strconv.Itoa(dstPort))
+	remote, err := net.DialTimeout("tcp", target, 30*time.Second)
 	if err != nil {
 		h.logger.Error("tunnel dial failed", "host", host, "err", err)
 		_, _ = fmt.Fprintf(client, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
@@ -206,21 +205,30 @@ func (h *Handler) untrackTunnel(conns ...net.Conn) {
 	}
 }
 
-// CloseAllTunnels closes all tracked tunnel connections.
-// Aligns with the documented server shutdown flow (ProxyHandler.CloseAllTunnels()).
+// CloseAllTunnels closes all currently tracked tunnel connections without
+// preventing new ones from being accepted. Called during graceful shutdown
+// after Server.Shutdown() has already stopped accepting new requests.
 func (h *Handler) CloseAllTunnels() {
-	h.Shutdown()
+	h.tunnelMu.Lock()
+	conns := make([]net.Conn, 0, len(h.tunnels))
+	for c := range h.tunnels {
+		conns = append(conns, c)
+	}
+	h.tunnels = make(map[net.Conn]struct{})
+	h.tunnelMu.Unlock()
+
+	for _, c := range conns {
+		_ = c.Close()
+	}
 }
 
 // Shutdown closes all tracked tunnel connections and prevents new ones.
 func (h *Handler) Shutdown() {
 	h.tunnelMu.Lock()
-	defer h.tunnelMu.Unlock()
 	h.shuttingDown = true
-	for c := range h.tunnels {
-		_ = c.Close()
-	}
-	h.tunnels = nil
+	h.tunnelMu.Unlock()
+
+	h.CloseAllTunnels()
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

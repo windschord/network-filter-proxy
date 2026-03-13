@@ -11,11 +11,14 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/claudework/network-filter-proxy/internal/api"
 	"github.com/claudework/network-filter-proxy/internal/config"
@@ -30,18 +33,23 @@ func run() int {
 	cfg := config.Load()
 	log := logger.New(cfg.LogFormat, cfg.LogLevel)
 
+	if cfg.APIBindAddrFallback {
+		log.Error("invalid API_BIND_ADDR, falling back to 127.0.0.1", "configured", os.Getenv("API_BIND_ADDR"))
+	}
+
 	store := rule.NewStore()
 	proxyHandler := proxy.NewHandler(store, log)
 	apiHandler := api.NewHandler(store, log, proxyHandler)
 
 	// Ports are configurable via environment variables (PROXY_PORT, API_PORT).
-	// API server always binds to 127.0.0.1 (loopback only) per security requirements.
+	// API bind address is configurable via API_BIND_ADDR (default: 127.0.0.1).
 	proxySrv := &http.Server{
 		Addr:    ":" + cfg.ProxyPort,
 		Handler: proxyHandler,
 	}
+	apiAddr := net.JoinHostPort(cfg.APIBindAddr, cfg.APIPort)
 	apiSrv := &http.Server{
-		Addr:    "127.0.0.1:" + cfg.APIPort,
+		Addr:    apiAddr,
 		Handler: apiHandler.Routes(),
 	}
 
@@ -57,7 +65,7 @@ func run() int {
 		}
 	}()
 	go func() {
-		log.Info("api server starting", "addr", "127.0.0.1:"+cfg.APIPort)
+		log.Info("api server starting", "addr", apiAddr)
 		if err := apiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("api server error", "err", err)
 			errCh <- err
@@ -93,6 +101,46 @@ func run() int {
 	return exitCode
 }
 
+// healthcheckAddr resolves the target address for the healthcheck probe.
+// For wildcard bind addresses (0.0.0.0, ::) and the default (127.0.0.1),
+// it probes 127.0.0.1. For specific bind addresses (e.g. 172.20.0.2, ::1),
+// it probes the actual bind address so the check reaches the API.
+func healthcheckAddr() string {
+	port := os.Getenv("API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	host := strings.TrimSpace(os.Getenv("API_BIND_ADDR"))
+	switch host {
+	case "", "127.0.0.1", "0.0.0.0", "::":
+		host = "127.0.0.1"
+	default:
+		// Invalid IP falls back to 127.0.0.1, consistent with config.Load().
+		if net.ParseIP(host) == nil {
+			host = "127.0.0.1"
+		}
+	}
+	return net.JoinHostPort(host, port)
+}
+
+// runHealthcheck probes the Management API health endpoint.
+func runHealthcheck() int {
+	addr := healthcheckAddr()
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://" + addr + "/api/v1/health")
+	if err != nil {
+		return 1
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusOK {
+		return 0
+	}
+	return 1
+}
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(runHealthcheck())
+	}
 	os.Exit(run())
 }

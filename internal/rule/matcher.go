@@ -10,8 +10,8 @@ func Matches(entry Entry, host string, port int) bool {
 	if entry.Port != 0 && entry.Port != port {
 		return false
 	}
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-	entryHost := strings.ToLower(strings.TrimSuffix(entry.Host, "."))
+	host = NormalizeHost(host)
+	entryHost := NormalizeHost(entry.Host)
 
 	if strings.Contains(entryHost, "/") {
 		_, ipNet, err := net.ParseCIDR(entryHost)
@@ -53,9 +53,13 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-// NormalizeHost trims whitespace from host. Used by API handler to store normalized values.
+// NormalizeHost normalizes a host string by trimming whitespace, removing
+// trailing dots (FQDN), and converting to lowercase. Used by API handler
+// to store normalized values consistent with Matches() normalization.
 func NormalizeHost(host string) string {
-	return strings.TrimSpace(host)
+	host = strings.TrimSpace(host)
+	host = strings.TrimSuffix(host, ".")
+	return strings.ToLower(host)
 }
 
 func ValidateEntry(entry Entry) error {
@@ -79,6 +83,9 @@ func ValidateEntry(entry Entry) error {
 			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (apex domain is empty)", host)}
 		}
 		apex := host[2:]
+		if !strings.Contains(apex, ".") {
+			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard pattern: %s (apex must be a multi-level domain, not a TLD)", host)}
+		}
 		if err := validateHostname(apex); err != nil {
 			return &ValidationError{Field: "host", Message: fmt.Sprintf("invalid wildcard apex %q: %s", apex, err)}
 		}
@@ -121,6 +128,9 @@ func rejectBadHostChars(host string) *ValidationError {
 }
 
 func validateHostname(host string) error {
+	if len(host) > 253 {
+		return fmt.Errorf("invalid host: exceeds 253 characters: %s", host[:50]+"...")
+	}
 	if strings.Contains(host, "..") {
 		return fmt.Errorf("invalid host: consecutive dots: %s", host)
 	}
@@ -128,8 +138,16 @@ func validateHostname(host string) error {
 		return fmt.Errorf("invalid host: leading or trailing dot: %s", host)
 	}
 	for _, label := range strings.Split(host, ".") {
+		if len(label) > 63 {
+			return fmt.Errorf("invalid host: label exceeds 63 characters: %s", host)
+		}
 		if strings.HasPrefix(label, "-") || strings.HasSuffix(label, "-") {
 			return fmt.Errorf("invalid host: label starts or ends with '-': %s", host)
+		}
+		for _, c := range label {
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '*' {
+				return fmt.Errorf("invalid host: invalid character %q in label: %s", c, host)
+			}
 		}
 	}
 	return nil

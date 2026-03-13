@@ -10,6 +10,7 @@ import (
 func TestLoad_Defaults(t *testing.T) {
 	t.Setenv("PROXY_PORT", "")
 	t.Setenv("API_PORT", "")
+	t.Setenv("API_BIND_ADDR", "")
 	t.Setenv("LOG_LEVEL", "")
 	t.Setenv("LOG_FORMAT", "")
 	t.Setenv("SHUTDOWN_TIMEOUT", "")
@@ -82,5 +83,119 @@ func TestLoad_ShutdownTimeout_Negative(t *testing.T) {
 	cfg := config.Load()
 	if cfg.ShutdownTimeout != 30*time.Second {
 		t.Errorf("ShutdownTimeout = %v, want %v", cfg.ShutdownTimeout, 30*time.Second)
+	}
+}
+
+func TestLoad_APIBindAddr_Default(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "127.0.0.1")
+	}
+}
+
+func TestLoad_APIBindAddr_AllInterfaces(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "0.0.0.0")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "0.0.0.0" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "0.0.0.0")
+	}
+}
+
+func TestLoad_APIBindAddr_SpecificIP(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "172.20.0.2")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "172.20.0.2" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "172.20.0.2")
+	}
+}
+
+func TestLoad_APIBindAddr_InvalidString(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "abc")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q (fallback)", cfg.APIBindAddr, "127.0.0.1")
+	}
+	if !cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = false, want true")
+	}
+}
+
+func TestLoad_APIBindAddr_ValidNoFallback(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "0.0.0.0")
+
+	cfg := config.Load()
+	if cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = true, want false")
+	}
+}
+
+func TestLoad_APIBindAddr_InvalidIP(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "999.999.999.999")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "127.0.0.1" {
+		t.Errorf("APIBindAddr = %q, want %q (fallback)", cfg.APIBindAddr, "127.0.0.1")
+	}
+}
+
+func TestLoad_APIBindAddr_IPv6(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", "::1")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "::1" {
+		t.Errorf("APIBindAddr = %q, want %q", cfg.APIBindAddr, "::1")
+	}
+}
+
+func TestLoad_APIBindAddr_WhitespaceTrimmed(t *testing.T) {
+	t.Setenv("API_BIND_ADDR", " 0.0.0.0 ")
+
+	cfg := config.Load()
+	if cfg.APIBindAddr != "0.0.0.0" {
+		t.Errorf("APIBindAddr = %q, want %q (trimmed)", cfg.APIBindAddr, "0.0.0.0")
+	}
+	if cfg.APIBindAddrFallback {
+		t.Error("APIBindAddrFallback = true, want false (valid after trimming)")
+	}
+}
+
+func TestLoad_LogLevel_InvalidFallback(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "verbose")
+
+	cfg := config.Load()
+	if cfg.LogLevel != "info" {
+		t.Errorf("LogLevel = %q, want %q (fallback)", cfg.LogLevel, "info")
+	}
+}
+
+func TestLoad_LogLevel_CaseInsensitive(t *testing.T) {
+	t.Setenv("LOG_LEVEL", "DEBUG")
+
+	cfg := config.Load()
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}
+
+func TestLoad_LogFormat_InvalidFallback(t *testing.T) {
+	t.Setenv("LOG_FORMAT", "yaml")
+
+	cfg := config.Load()
+	if cfg.LogFormat != "json" {
+		t.Errorf("LogFormat = %q, want %q (fallback)", cfg.LogFormat, "json")
+	}
+}
+
+func TestLoad_LogFormat_CaseInsensitive(t *testing.T) {
+	t.Setenv("LOG_FORMAT", "TEXT")
+
+	cfg := config.Load()
+	if cfg.LogFormat != "text" {
+		t.Errorf("LogFormat = %q, want %q", cfg.LogFormat, "text")
 	}
 }
